@@ -5,7 +5,16 @@ namespace aslam
 {
     namespace cameras
     {
-        void TartanCalibWorker::compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution)
+        void TartanCalibWorker::compute_rotation(const Eigen::MatrixXd& pose )
+        {
+            rot_mat_ = Eigen::Matrix<float,3,3>::Zero();
+            rot_mat_(0,0) = 1;
+            rot_mat_(1,1) = 1;
+            rot_mat_(2,2) = 1;
+
+        }
+
+        void TartanCalibWorker::compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose)
         {
             num_points_ = resolution.coeff(0,0)*resolution.coeff(1,0);
             xyz_.resize(3,num_points_);
@@ -19,20 +28,19 @@ namespace aslam
             xyz_.row(0)*= tan(fov.coeff(0,0) / 2.0 / 180 * PI);
             xyz_.row(1)*= tan(fov.coeff(1,0) / 2.0 / 180 * PI);
             xyz_.row(2) = Eigen::Matrix<float, 1,Eigen::Dynamic>::Ones(1,num_points_);
+            compute_rotation(pose);
+            xyz_=rot_mat_*xyz_.eval();
+
             xyzs_.push_back(xyz_);
             // SM_INFO_STREAM("xyz_shape : \n" << xyz_.cols() << "  " << xyz_.rows() << std::endl);
         }
         void TartanCalibWorker::compute_xyzs(void)
         {
-                // mvs::PointMat1 ax = 
-                //     mvs::PointMat1::LinSpaced(shape.w, 0, 1) * static_cast<Scalar_t>( fov_x / 180 * PI );
-                // mvs::PointMat1 ay = 
-                //     mvs::PointMat1::LinSpaced(shape.h, 0, 1) * static_cast<Scalar_t>( fov_y  / 180 * PI );
 
                 xyzs_.empty();
                 for (int i = 0; i< num_views_; i++)
                 {
-                    compute_xyz(fovs_.col(i),resolutions_.col(i));
+                    compute_xyz(fovs_.col(i),resolutions_.col(i),poses_.col(i));
                 }
                 
                 cv::viz::Viz3d myWindow("Coordinate Frame");

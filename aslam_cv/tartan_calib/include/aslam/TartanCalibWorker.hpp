@@ -36,7 +36,9 @@ namespace aslam
             TartanCalibWorker(){};
             ~TartanCalibWorker(){}
             void compute_xyzs(void);
-            void compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution);
+            void compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose);
+            void compute_rotation(const Eigen::MatrixXd& pose );
+            
 
 
 
@@ -58,6 +60,7 @@ namespace aslam
 
         private:
             Eigen::Matrix<float, 3, Eigen::Dynamic> xyz_; // rows are xyz, each column is a point
+            Eigen::Matrix<float,3,3> rot_mat_;
             Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> xx_,yy_; //vector with x and y values in the global
             Eigen::MatrixXd fovs_, poses_, resolutions_;
             std::vector<Eigen::Matrix<float, 3, Eigen::Dynamic>> xyzs_;
