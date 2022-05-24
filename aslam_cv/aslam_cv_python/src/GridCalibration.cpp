@@ -10,6 +10,7 @@
 #include <aslam/cameras/GridDetector.hpp>
 #include <aslam/LinkCvSerialization.hpp>
 
+
 typedef Eigen::Matrix<boost::uint8_t, Eigen::Dynamic, Eigen::Dynamic> image_t;
 
 boost::python::tuple pointToGridCoordinates(
@@ -206,7 +207,6 @@ void exportGridCalibration() {
   using namespace boost::python;
   using namespace aslam::cameras;
 
-  aslam::linkCvSerialization();
 
   class_<PythonImageList>("NumpyImageList",  init<>())
       .def("addImage", &addImageToList);

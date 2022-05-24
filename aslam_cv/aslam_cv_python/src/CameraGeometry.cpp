@@ -4,8 +4,8 @@
 #include <sm/python/Id.hpp>
 #include <boost/python/stl_iterator.hpp>
 #include <aslam/cameras/GridCalibrationTargetObservation.hpp>
+#include <aslam/TartanCalibWorker.hpp>
 #include <sm/python/boost_serialization_pickle.hpp>
-#include <aslam/cameras/GridCalibrationTargetObservation.hpp>
 
 namespace detail {
 // "Pass by reference" doesn't work with the Eigen type converters.
@@ -80,6 +80,19 @@ boost::python::tuple estimateTransformation(const C * camera, aslam::cameras::Gr
 }
 
 template<typename C>
+bool getPinhole(const C * camera, const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions)
+{
+  //convert python list to stl vector
+  boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
+  std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist(begin, end);
+  aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker(obslist,fovs,poses,resolutions);
+  // std::cout << tartan_.get_xyz();
+  // aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker("test");
+
+  return true;
+}
+
+template<typename C>
 bool initializeIntrinsics(C* camera, const boost::python::object& py_obslist)
 {
   //convert python list to stl vector
@@ -112,6 +125,7 @@ void exportCameraGeometryBase() {
       .def("temporalOffset", &CameraGeometryBase::vsTemporalOffset, "Given a keypoint, what is the offset from the start of integration for this image?\nDuration = temporalOffset(keypoint)")
       .def("createRandomKeypoint", &CameraGeometryBase::createRandomKeypoint, "Create a valid, random keypoint. This is useful for unit testing and experiments.")
       .def("createRandomVisiblePoint",&CameraGeometryBase::createRandomVisiblePoint, "Create a valid point in space visible by the camera.\np = createRandomVisiblePoint(depth).")
+      .def("getPinhole", &detail::getPinhole<CameraGeometryBase>, "Map a 3x1 Euclidean point to a keypoint.\nk = euclideanToKeypoint(p)")
       .def("euclideanToKeypoint", &detail::e2k<CameraGeometryBase>, "Map a 3x1 Euclidean point to a keypoint.\nk = euclideanToKeypoint(p)")
       .def("euclideanToKeypointJp", &detail::e2kJp<CameraGeometryBase>, "Map a 3x1 Euclidean point to a keypoint and get the Jacobian of the mapping with respect to small changes in the point.\n(k, Jp) = euclideanToKeypoint(p)")
       .def("homogeneousToKeypoint", &detail::eh2k<CameraGeometryBase>, "Map a 4x1 homogeneous Euclidean point to a keypoint.\nk = euclideanToKeypoint(p)")

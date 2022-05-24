@@ -177,10 +177,12 @@ def main():
             observations = kc.extractCornersFromDataset(cam.dataset, cam.ctarget.detector, 
                                                         multithreading=multithreading, clearImages=False,
                                                         noTransformation=True)
-            
             #populate the database
             for obs in observations:
                 obsdb.addObservation(cam_id, obs)
+            
+            geometry = cam.geometry.getPinhole(observations,np.zeros((2,20)),np.zeros((3,20)),np.zeros((3,10)))
+            print(geometry)
 
             #initialize the intrinsics
             if not cam.initGeometryFromObservations(observations):
@@ -188,6 +190,8 @@ def main():
             
             print("\tProjection initialized to: %s" % cam.geometry.projection().getParameters().flatten())
             print("\tDistortion initialized to: %s" % cam.geometry.projection().distortion().getParameters().flatten())
+
+            
             
             cameraList.append(cam)
         else:

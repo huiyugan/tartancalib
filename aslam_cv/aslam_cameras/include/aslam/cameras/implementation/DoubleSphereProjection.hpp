@@ -87,6 +87,7 @@ template<typename DISTORTION_T>
 DoubleSphereProjection<DISTORTION_T>::~DoubleSphereProjection() {
 }
 
+
 template<typename DISTORTION_T>
 template<typename DERIVED_P, typename DERIVED_K>
 bool DoubleSphereProjection<DISTORTION_T>::euclideanToKeypoint(
@@ -136,6 +137,8 @@ bool DoubleSphereProjection<DISTORTION_T>::euclideanToKeypoint(
   // Check if keypoint lies on the sensor
   return isValid(outKeypoint);
 }
+
+
 
 template<typename DISTORTION_T>
 template<typename DERIVED_P, typename DERIVED_K, typename DERIVED_JP>

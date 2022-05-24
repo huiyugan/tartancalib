@@ -4,6 +4,7 @@ project(aslam_cv_serialization)
 
 find_package(catkin REQUIRED COMPONENTS
   aslam_cameras
+  tartan_calib
   aslam_time
   sm_common
   sm_boost

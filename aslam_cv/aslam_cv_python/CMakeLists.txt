@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   opencv2_catkin
   python_module
   aslam_cv_serialization
+  tartan_calib
   aslam_imgproc
   aslam_cameras
   aslam_time
@@ -23,7 +24,7 @@ catkin_package(
   INCLUDE_DIRS include
 )
 
-add_definitions(-fPIC -Wextra -Winit-self -Woverloaded-virtual -Wnon-virtual-dtor -Wsign-promo -Wno-long-long)
+add_definitions(-fPIC -Wextra -Winit-self -Woverloaded-virtual -Wnon-virtual-dtor -Wsign-promo -Wno-long-long -Wl,--no-allow-shlib-undefined)
 
 if(APPLE)
   add_definitions( -ftemplate-depth-1024)
@@ -33,6 +34,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_python_export_library(${PROJECT_NAME} python/aslam_cv
   src/module.cpp
+  src/TartanCalibWorker.cpp
   src/CameraGeometries.cpp
   src/CameraGeometry.cpp
   src/Time.cpp

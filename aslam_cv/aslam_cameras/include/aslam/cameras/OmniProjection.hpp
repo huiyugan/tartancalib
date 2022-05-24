@@ -10,6 +10,7 @@
 #include <sm/kinematics/Transformation.hpp>
 #include <aslam/cameras/GridCalibrationTargetObservation.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <sm/logging.hpp>
 
 namespace aslam {

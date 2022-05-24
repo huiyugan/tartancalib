@@ -28,6 +28,7 @@ namespace aslam {
 		return kp;
 	}
 
+
 	template<typename CAMERA_T>
 	Eigen::VectorXd CameraDesignVariable<CAMERA_T>::homogeneousToKeypoint(Eigen::Vector4d ph) {
 		keypoint_t kp;

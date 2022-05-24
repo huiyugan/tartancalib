@@ -178,6 +178,7 @@ namespace aslam {
       return valid && _mask.isValid(outKeypoint);
     }
 
+
     template<typename P, typename S, typename M>
     template<typename DERIVED_P, typename DERIVED_K, typename DERIVED_JP>
     bool CameraGeometry<P, S, M>::euclideanToKeypoint(
@@ -187,6 +188,16 @@ namespace aslam {
       bool valid = _projection.euclideanToKeypoint(p, outKeypoint, outJp);
       return valid && _mask.isValid(outKeypoint);
     }
+
+    // template<typename P, typename S, typename M>
+    // template<typename DERIVED_P, typename DERIVED_K, typename DERIVED_JP>
+    // bool CameraGeometry<P, S, M>::get_pinhole(
+    //     const Eigen::MatrixBase<DERIVED_P> & p,
+    //     const Eigen::MatrixBase<DERIVED_K> & outKeypoint,
+    //     const Eigen::MatrixBase<DERIVED_JP> & outJp) const {
+    //   bool valid = _projection.euclideanToKeypoint(p, outKeypoint, outJp);
+    //   return valid && _mask.isValid(outKeypoint);
+    // }
 
     template<typename P, typename S, typename M>
     template<typename DERIVED_P, typename DERIVED_K, typename DERIVED_JP>

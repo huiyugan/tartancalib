@@ -9,6 +9,9 @@
 #include <aslam/Time.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <aslam/cameras/GridCalibrationTargetObservation.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 namespace aslam {
 	namespace backend {

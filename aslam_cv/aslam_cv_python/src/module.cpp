@@ -14,7 +14,7 @@ void exportUndistorters();
 //void exportNCameras();
 void exportPinholeUndistorter();
 void exportOmniUndistorter();
-
+void exportTartan();
 
 // The title of this library must match exactly
 BOOST_PYTHON_MODULE(libaslam_cv_python)
@@ -27,6 +27,7 @@ BOOST_PYTHON_MODULE(libaslam_cv_python)
 //  exportMatchingAlgorithms();
 //  exportImageContainer();
   exportGridCalibration();
+  exportTartan();
 //  exportLandmark();
   exportUndistorters();
 //  exportNCameras();

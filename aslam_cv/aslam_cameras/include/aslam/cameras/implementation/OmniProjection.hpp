@@ -747,6 +747,7 @@ bool OmniProjection<DISTORTION_T>::initializeIntrinsics(const std::vector<GridCa
   //go though all images and pick the best estimate (=lowest mean reproj. err)
   for (size_t i = 0; i < observations.size(); ++i) {
     const GridCalibrationTargetObservation& obs = observations.at(i);
+
     SM_ASSERT_TRUE(Exception, obs.target(), "The GridCalibrationTargetObservation has no target object");
     const GridCalibrationTargetBase & target = *obs.target();
 

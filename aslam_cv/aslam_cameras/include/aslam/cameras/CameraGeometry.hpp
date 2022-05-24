@@ -81,7 +81,7 @@ class CameraGeometry : public CameraGeometryBase {
   bool euclideanToKeypoint(const Eigen::MatrixBase<DERIVED_P> & p,
                            const Eigen::MatrixBase<DERIVED_K> & outKeypoint,
                            const Eigen::MatrixBase<DERIVED_JP> & outJp) const;
-
+  
   template<typename DERIVED_P, typename DERIVED_K, typename DERIVED_JP>
   bool euclideanToKeypointFiniteDifference(
       const Eigen::MatrixBase<DERIVED_P> & p,

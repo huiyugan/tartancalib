@@ -46,4 +46,3 @@ BOOST_CLASS_EXPORT_KEY(aslam::cameras::DepthCameraGeometry);
 BOOST_CLASS_EXPORT_KEY(aslam::cameras::DistortedDepthCameraGeometry);
 BOOST_CLASS_EXPORT_KEY(aslam::cameras::EquidistantDistortedDepthCameraGeometry);
 
-
