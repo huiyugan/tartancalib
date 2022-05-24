@@ -3,6 +3,11 @@ project(tartan_calib)
 
 set(CMAKE_CXX_STANDARD 14)
 
+find_package(Eigen3 REQUIRED NO_MODULE)
+if(Eigen3_FOUND)
+    message(STATUS "EIGEN3_INCLUDE_DIR=${EIGEN3_INCLUDE_DIR}")
+endif()
+
 find_package(Boost REQUIRED COMPONENTS serialization) 
 find_package(catkin REQUIRED COMPONENTS
   sm_common
@@ -11,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   sm_kinematics
   aslam_time
   sm_opencv
+  sm_logging
   opencv2_catkin
   aslam_cameras
   sm_property_tree

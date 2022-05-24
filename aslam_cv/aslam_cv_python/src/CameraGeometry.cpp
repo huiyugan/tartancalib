@@ -86,7 +86,8 @@ bool getPinhole(const C * camera, const boost::python::object& py_obslist, const
   boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
   std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist(begin, end);
   aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker(obslist,fovs,poses,resolutions);
-  std::cout << "tartan output: " << tartan_.get_xyz() << std::endl;
+  tartan_.compute_xyzs();
+  // std::cout << "tartan output: " << tartan_.get_xyz() << std::endl;
   // aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker("test");
 
   return true;

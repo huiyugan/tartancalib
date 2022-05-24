@@ -14,7 +14,7 @@ void exportTartan()
         class_<aslam::cameras::TartanCalibWorker>("TartanCalibWorker")
         .def(init<>())
         .def(init<const std::vector<aslam::cameras::GridCalibrationTargetObservation>&, const Eigen::MatrixXd&, const Eigen::MatrixXd &, const Eigen::MatrixXd&>())
-        .def("get_xyz",&aslam::cameras::TartanCalibWorker::get_xyz)
+        .def("compute_xyzs",&aslam::cameras::TartanCalibWorker::compute_xyzs)
         .def_pickle(sm::python::pickle_suite<aslam::cameras::TartanCalibWorker>())
         ;
 }

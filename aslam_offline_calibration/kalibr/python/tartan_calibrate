@@ -180,8 +180,12 @@ def main():
             #populate the database
             for obs in observations:
                 obsdb.addObservation(cam_id, obs)
-            
-            geometry = cam.geometry.getPinhole(observations,np.zeros((2,20)),np.zeros((3,20)),np.zeros((3,10)))
+
+            fovs = np.array([[45,45],[45,45]])
+            poses = np.array([[0,50],[0,50]])
+            resolutions = np.array([[1000,1000],[1000,1000]])
+
+            geometry = cam.geometry.getPinhole(observations,fovs,poses,resolutions)
             print(geometry)
 
             #initialize the intrinsics

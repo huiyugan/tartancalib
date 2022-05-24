@@ -1,6 +1,6 @@
 #ifndef ASLAM_TARTAN_CALIB
 #define ASLAM_TARTAN_CALIB
-#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/serialization/export.hpp>
 #include <aslam/cameras/GridCalibrationTargetObservation.hpp>
@@ -9,14 +9,13 @@
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
-//#include <ros/platform.h>
 #include <iostream>
 #include <cmath>
-//#include <ros/exception.h>
 #include <boost/math/special_functions/round.hpp>
-//#include "rostime_decl.h"
-//#include <aslam/Exceptions.hpp>
 #include <boost/serialization/nvp.hpp>
+#include <sm/logging.hpp>
+#include <boost/math/constants/constants.hpp>
+#include <opencv2/viz.hpp>
 
 namespace aslam
 {
@@ -29,10 +28,16 @@ namespace aslam
             : obslist_(obslist),
             fovs_(fovs),
             poses_(poses),
-            resolutions_(resolutions) {};
+            resolutions_(resolutions) {
+              num_frames_ = obslist.size();
+              num_views_ = fovs.cols();
+              assert (num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() );
+            };
             TartanCalibWorker(){};
             ~TartanCalibWorker(){}
-            bool get_xyz(void);
+            void compute_xyzs(void);
+            void compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution);
+
 
 
           /// \brief Serialization
@@ -52,8 +57,12 @@ namespace aslam
 
 
         private:
+            Eigen::Matrix<float, 3, Eigen::Dynamic> xyz_; // rows are xyz, each column is a point
+            Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> xx_,yy_; //vector with x and y values in the global
             Eigen::MatrixXd fovs_, poses_, resolutions_;
+            std::vector<Eigen::Matrix<float, 3, Eigen::Dynamic>> xyzs_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
+            int num_frames_,num_views_,num_points_;
 
     };
     }
