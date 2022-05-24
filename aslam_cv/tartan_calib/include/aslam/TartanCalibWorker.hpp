@@ -32,11 +32,11 @@ namespace aslam
             resolutions_(resolutions) {};
             TartanCalibWorker(){};
             ~TartanCalibWorker(){}
-            // bool get_xyz(void);
+            bool get_xyz(void);
 
 
           /// \brief Serialization
-          enum {CLASS_SERIALIZATION_VERSION = 1};
+          enum {CLASS_SERIALIZATION_VERSION = 4};
           BOOST_SERIALIZATION_SPLIT_MEMBER()
 
           /// \brief Serialization support

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 find_package(Boost REQUIRED COMPONENTS serialization) 
 find_package(catkin REQUIRED COMPONENTS
+  tartan_calib
   sm_common
   sm_eigen
   sm_kinematics
@@ -13,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   opencv2_catkin
   python_module
   aslam_cv_serialization
-  tartan_calib
   aslam_imgproc
   aslam_cameras
   aslam_time
@@ -34,7 +34,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_python_export_library(${PROJECT_NAME} python/aslam_cv
   src/module.cpp
-  src/TartanCalibWorker.cpp
+  src/tartancalibworker_.cpp
   src/CameraGeometries.cpp
   src/CameraGeometry.cpp
   src/Time.cpp
