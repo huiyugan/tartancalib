@@ -8,10 +8,25 @@ namespace aslam
         void TartanCalibWorker::compute_rotation(const Eigen::MatrixXd& pose )
         {
             rot_mat_ = Eigen::Matrix<float,3,3>::Zero();
-            rot_mat_(0,0) = 1;
-            rot_mat_(1,1) = 1;
-            rot_mat_(2,2) = 1;
+            rot_mat_x_ = Eigen::Matrix<float,3,3>::Zero();
+            rot_mat_z_ = Eigen::Matrix<float,3,3>::Zero();
+            
+            rot_x_ = pose.coeff(0,0)/ 180 * PI;
+            rot_z_ = pose.coeff(1,0)/ 180 * PI;
 
+            rot_mat_x_(0,0) = 1;
+            rot_mat_x_(1,1) = cos(rot_x_);
+            rot_mat_x_(1,2) = -sin(rot_x_);
+            rot_mat_x_(2,1) = sin(rot_x_);
+            rot_mat_x_(2,2) = cos(rot_x_);
+
+            rot_mat_z_(0,0) = cos(rot_z_);
+            rot_mat_z_(0,1) = -sin(rot_z_);
+            rot_mat_z_(1,0) = sin(rot_z_);
+            rot_mat_z_(1,1) = cos(rot_z_);
+            rot_mat_z_(2,2) = 1;
+
+            rot_mat_ = rot_mat_z_*rot_mat_x_;
         }
 
         void TartanCalibWorker::compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose)
@@ -29,10 +44,10 @@ namespace aslam
             xyz_.row(1)*= tan(fov.coeff(1,0) / 2.0 / 180 * PI);
             xyz_.row(2) = Eigen::Matrix<float, 1,Eigen::Dynamic>::Ones(1,num_points_);
             compute_rotation(pose);
-            xyz_=rot_mat_*xyz_.eval();
+            xyz_=rot_mat_*xyz_;
 
             xyzs_.push_back(xyz_);
-            // SM_INFO_STREAM("xyz_shape : \n" << xyz_.cols() << "  " << xyz_.rows() << std::endl);
+            
         }
         void TartanCalibWorker::compute_xyzs(void)
         {
@@ -43,19 +58,27 @@ namespace aslam
                     compute_xyz(fovs_.col(i),resolutions_.col(i),poses_.col(i));
                 }
                 
-                cv::viz::Viz3d myWindow("Coordinate Frame");
-                myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-
-                std::vector<cv::Point3f> pts3d;
-                for (int i = 0; i<xyzs_[0].cols() ; i ++)
+                if (verbose_)
                 {
-                    pts3d.push_back(cv::Point3f(xyzs_[0].coeff(0,i),xyzs_[0].coeff(1,i),xyzs_[0].coeff(2,i)));
+                    cv::viz::Viz3d myWindow("Coordinate Frame");
+                    myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
+                    std::vector<cv::Point3f> pts3d;
+                    
+                    for (int j = 0; j<num_views_; j++)
+                    {
+                        pts3d.empty();
+                        for (int i = 0; i<xyzs_[j].cols() ; i ++)
+                        {
+                            pts3d.push_back(cv::Point3f(xyzs_[j].coeff(0,i),xyzs_[j].coeff(1,i),xyzs_[j].coeff(2,i)));
+                        }
+
+                        cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
+                        myWindow.showWidget("cloud 1", cloud_widget1);
+                    }
+                    myWindow.spin();
+
                 }
 
-                // pts3d_.push_back(cv::Point3f(1, 2, 3));
-                cv::viz::WCloud cloud_widget1(pts3d, cv::viz::Color::green());
-                myWindow.showWidget("cloud 1", cloud_widget1);
-                myWindow.spin();
         }
     }
 }
