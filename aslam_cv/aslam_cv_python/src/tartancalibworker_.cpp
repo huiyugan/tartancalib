@@ -2,19 +2,21 @@
 #include <numpy_eigen/boost_python_headers.hpp>
 #include <boost/python/operators.hpp>
 #include <sm/python/boost_serialization_pickle.hpp>
+#include <aslam/cameras/CameraGeometryBase.hpp>
 
 using namespace boost::python; 
-using namespace aslam::cameras;
+// using namespace aslam::cameras;
 // class aslam::cameras::Tartan_Calib_Worker;
-
+using aslam::cameras::CameraGeometryBase;
 
 void exportTartan()
 {       
-        using namespace aslam::cameras;
-        class_<aslam::cameras::TartanCalibWorker>("TartanCalibWorker")
-        .def(init<>())
-        .def(init<const std::vector<aslam::cameras::GridCalibrationTargetObservation>&, const Eigen::MatrixXd&, const Eigen::MatrixXd &, const Eigen::MatrixXd&, const bool>())
-        .def("compute_xyzs",&aslam::cameras::TartanCalibWorker::compute_xyzs)
-        .def_pickle(sm::python::pickle_suite<aslam::cameras::TartanCalibWorker>())
+        // using namespace aslam::cameras;
+        class_<aslam::cameras::TartanCalibWorker<CameraGeometryBase>>("TartanCalibWorker")
+        // .def(init<>())
+        // .def(init<const std::vector<aslam::cameras::GridCalibrationTargetObservation>&, const Eigen::MatrixXd&, const Eigen::MatrixXd &, const Eigen::MatrixXd&, const bool>())
+        .def("compute_xyzs",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::compute_xyzs)
+        .def("compute_remaps",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::compute_remaps)
+        .def_pickle(sm::python::pickle_suite<aslam::cameras::TartanCalibWorker<CameraGeometryBase>>())
         ;
 }

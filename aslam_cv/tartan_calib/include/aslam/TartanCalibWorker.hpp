@@ -16,32 +16,38 @@
 #include <sm/logging.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <opencv2/viz.hpp>
-
+#include <opencv2/highgui.hpp>
 namespace aslam
 {
+
     namespace cameras
     {
-    class TartanCalibWorker
+    template< typename C>
+    class TartanCalibWorker:
+      public boost::enable_shared_from_this<TartanCalibWorker<C>>
     {
-        public:
-            TartanCalibWorker(const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions, const bool verbose)
+        public:  
+            TartanCalibWorker(const C* camera,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions, const bool verbose)
             : obslist_(obslist),
+            camera_(camera),
             fovs_(fovs),
             poses_(poses),
             resolutions_(resolutions),
-            verbose_(verbose)
-             {
+            verbose_(verbose),
+            in_width_(obslist[0].imCols()),
+            in_height_(obslist[0].imRows()) // assumption: this array only contains images of the same resolution, as we expect to create one TartanCalibWorker class per camera
+             { 
               num_frames_ = obslist.size();
               num_views_ = fovs.cols();
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols(), "All inserted tartan matrices need the same number of columns." );
+              
             };
             TartanCalibWorker(){};
             ~TartanCalibWorker(){}
-            void compute_xyzs(void);
+            void compute_xyzs();
             void compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose);
             void compute_rotation(const Eigen::MatrixXd& pose );
-            
-
+            void compute_remaps();         
 
 
           /// \brief Serialization
@@ -58,6 +64,7 @@ namespace aslam
           void load(Archive & ar, const unsigned int /*version*/)
           {
           }
+          
 
 
         private:
@@ -65,11 +72,13 @@ namespace aslam
             Eigen::Matrix<float,3,3> rot_mat_,rot_mat_x_,rot_mat_z_;
             Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> xx_,yy_; //vector with x and y values in the global
             Eigen::MatrixXd fovs_, poses_, resolutions_;
+            Eigen::Vector2d distorted_pixel_location,pixel_location;
             std::vector<Eigen::Matrix<float, 3, Eigen::Dynamic>> xyzs_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
-            int num_frames_,num_views_,num_points_;
+            int num_frames_,num_views_,num_points_,in_width_,in_height_;
             float rot_x_, rot_z_;
-            bool verbose_;
+            bool verbose_,empty_pixels_;
+            const C* camera_;
 
     };
     }
@@ -80,12 +89,13 @@ namespace aslam
 // namespace serialization {
 
 // template<class Archive>
-// void serialize(Archive & ar, aslam::cameras::TartanCalibWorker & t, const unsigned int /* version */) {
+// void serialize(Archive & ar, const unsigned int /* version */) {
   
 // }
 
 // }  // namespace serialization
 // }  // namespace boost
 
-SM_BOOST_CLASS_VERSION(aslam::cameras::TartanCalibWorker);
+SM_BOOST_CLASS_VERSION_T1(aslam::cameras::TartanCalibWorker);
+#include<aslam/implementation/TartanCalibWorker.hpp>
 #endif /* ASLAM_TARTAN_CALIB */

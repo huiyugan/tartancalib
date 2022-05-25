@@ -1,11 +1,18 @@
-#include<aslam/TartanCalibWorker.hpp>
 constexpr const auto PI = boost::math::constants::pi<double>();
 
 namespace aslam
 {
     namespace cameras
     {
-        void TartanCalibWorker::compute_rotation(const Eigen::MatrixXd& pose )
+        template< typename C>
+        void TartanCalibWorker<C>::compute_remaps(void)
+        {
+
+        }
+
+        
+        template< typename C>
+        void TartanCalibWorker<C>::compute_rotation(const Eigen::MatrixXd& pose )
         {
             rot_mat_ = Eigen::Matrix<float,3,3>::Zero();
             rot_mat_x_ = Eigen::Matrix<float,3,3>::Zero();
@@ -28,8 +35,9 @@ namespace aslam
 
             rot_mat_ = rot_mat_z_*rot_mat_x_;
         }
-
-        void TartanCalibWorker::compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose)
+        
+        template< typename C>
+        void TartanCalibWorker<C>::compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose)
         {
             num_points_ = resolution.coeff(0,0)*resolution.coeff(1,0);
             xyz_.resize(3,num_points_);
@@ -49,7 +57,9 @@ namespace aslam
             xyzs_.push_back(xyz_);
             
         }
-        void TartanCalibWorker::compute_xyzs(void)
+
+        template< typename C>
+        void TartanCalibWorker<C>::compute_xyzs(void)
         {
 
                 xyzs_.empty();
