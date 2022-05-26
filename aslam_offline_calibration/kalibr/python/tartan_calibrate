@@ -185,8 +185,7 @@ def main():
             poses = np.array([[90,90,90,90],[90,180,270,0]])
             resolutions = np.array([[1000,1000,1000,1000],[1000,1000,1000,1000]])
 
-            geometry = cam.geometry.getPinhole(observations,fovs,poses,resolutions,True)
-            print(geometry)
+   
 
             #initialize the intrinsics
             if not cam.initGeometryFromObservations(observations):
@@ -195,6 +194,9 @@ def main():
             print("\tProjection initialized to: %s" % cam.geometry.projection().getParameters().flatten())
             print("\tDistortion initialized to: %s" % cam.geometry.projection().distortion().getParameters().flatten())
 
+
+            geometry = cam.geometry.getPinhole(observations,fovs,poses,resolutions,True)
+            print(geometry)
             
             
             cameraList.append(cam)

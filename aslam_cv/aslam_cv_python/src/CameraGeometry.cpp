@@ -15,6 +15,16 @@ template<typename C>
 Eigen::VectorXd e2k(const C * camera, Eigen::Vector3d const & p) {
   Eigen::VectorXd k;
   camera->vsEuclideanToKeypoint(p, k);
+
+  Eigen::VectorXd xyz_in_(3);
+  xyz_in_(0) = 0 ;
+  xyz_in_(1) = 0;
+  xyz_in_(2) = 1.0;
+  Eigen::VectorXd out;
+
+  camera->vsEuclideanToKeypoint(xyz_in_,out);
+  SM_INFO_STREAM("outtt" <<out <<" \n");
+
   return k;
 }
 
@@ -86,6 +96,7 @@ bool getPinhole(const C * camera, const boost::python::object& py_obslist, const
   boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
   std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist(begin, end);
   auto tartan_ = aslam::cameras::TartanCalibWorker<C>(camera,obslist,fovs,poses,resolutions,verbose);
+
   tartan_.compute_xyzs();
   tartan_.compute_remaps();
   // std::cout << "tartan output: " << tartan_.get_xyz() << std::endl;

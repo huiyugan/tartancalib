@@ -4,11 +4,87 @@ namespace aslam
 {
     namespace cameras
     {
+
+        template< typename C>
+        void TartanCalibWorker<C>::compute_remap(const Eigen::Matrix<float, 3, Eigen::Dynamic>& xyz, const Eigen::MatrixXd& resolution) 
+        {
+            xyz_ = xyz;
+            empty_pixels_ = false;
+            resolution_out_ = cv::Size(resolution.coeff(1,0),resolution.coeff(0,0));
+            map_x_float_ = cv::Mat(resolution_out_, CV_32FC1);
+            map_y_float_ = cv::Mat(resolution_out_, CV_32FC1);
+
+
+            // // Compute the remap maps
+            for (size_t v = 0; v < resolution.coeff(0,0); ++v) {
+                for (size_t u = 0; u < resolution.coeff(1,0); ++u) {
+                xyz_idx_ = u+v*resolution.coeff(1,0);
+                // SM_INFO_STREAM(std::to_string(xyz_idx_)+" \n");
+                xyz_ray_ = xyz_.col(xyz_idx_).cast<double>();
+                camera_->vsEuclideanToKeypoint(xyz_ray_,distorted_pixel_location_);
+                //insert point into map
+                map_x_float_.at<float>(v, u) = static_cast<float>(distorted_pixel_location_(0));
+                map_y_float_.at<float>(v, u) = static_cast<float>(distorted_pixel_location_(1));
+                }
+            }
+            cv::convertMaps(map_x_float_, map_y_float_, map_x_, map_y_, CV_16SC2);
+            // SM_INFO_STREAM("map:" <<map_x_float_ <<" \n");
+            maps_x_.push_back(map_x_);
+            maps_y_.push_back(map_y_);
+
+        }
+
         template< typename C>
         void TartanCalibWorker<C>::compute_remaps(void)
         {
+            for (size_t i =0; i < num_views_; i++)
+            {
+                compute_remap(xyzs_[i],resolutions_.col(i));
+                cv::Mat undistorted_image;
+                cv::remap(obslist_[0].image(),undistorted_image,map_x_,map_y_,cv::INTER_LINEAR,
+              cv::BORDER_CONSTANT);
+                cv::imshow("test",obslist_[0].image());
+                cv::waitKey(1000);
+                cv::imshow("test",undistorted_image);
+                cv::waitKey(1000);
+
+            }
 
         }
+
+// template<typename C>
+// Eigen::VectorXd e2k(const C * camera, Eigen::Vector3d const & p) {
+//   Eigen::VectorXd k;
+//   camera->vsEuclideanToKeypoint(p, k);
+//   return k;
+        
+
+
+            //     Eigen::VectorXd k;
+            //     Eigen::Vector3d p = xyzs_[0].col(0);
+            //     camera_->vsEuclideanToKeypoint(p, k);
+
+            // Eigen::Vector2d distorted_pixel_location;
+            // distortPixel(
+            //     used_camera_parameters_pair_.getInputPtr()->K(),
+            //     used_camera_parameters_pair_.getInputPtr()->R(),
+            //     used_camera_parameters_pair_.getOutputPtr()->P(),
+            //     used_camera_parameters_pair_.getInputPtr()->distortionModel(), D,
+            //     pixel_location, &distorted_pixel_location);
+
+            // // Insert in map
+            // map_x_float.at<float>(v, u) =
+            //     static_cast<float>(distorted_pixel_location.x());
+            // map_y_float.at<float>(v, u) =
+            //     static_cast<float>(distorted_pixel_location.y());
+
+            // if ((distorted_pixel_location.x() < 0) ||
+            //     (distorted_pixel_location.y() < 0) ||
+            //     (distorted_pixel_location.x() >= resolution_in.width) ||
+            //     (distorted_pixel_location.y() >= resolution_in.height)) {
+            //     empty_pixels_ = true;
+            // }
+        
 
         
         template< typename C>

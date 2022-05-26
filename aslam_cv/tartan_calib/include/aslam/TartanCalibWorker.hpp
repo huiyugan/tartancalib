@@ -47,7 +47,9 @@ namespace aslam
             void compute_xyzs();
             void compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose);
             void compute_rotation(const Eigen::MatrixXd& pose );
-            void compute_remaps();         
+            void compute_remap(const Eigen::Matrix<float, 3, Eigen::Dynamic>& xyz, const Eigen::MatrixXd& resolution);
+            void compute_remaps(); 
+               
 
 
           /// \brief Serialization
@@ -72,13 +74,21 @@ namespace aslam
             Eigen::Matrix<float,3,3> rot_mat_,rot_mat_x_,rot_mat_z_;
             Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> xx_,yy_; //vector with x and y values in the global
             Eigen::MatrixXd fovs_, poses_, resolutions_;
-            Eigen::Vector2d distorted_pixel_location,pixel_location;
             std::vector<Eigen::Matrix<float, 3, Eigen::Dynamic>> xyzs_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
-            int num_frames_,num_views_,num_points_,in_width_,in_height_;
+            int num_frames_,num_views_,num_points_,in_width_,in_height_,xyz_idx_;
             float rot_x_, rot_z_;
             bool verbose_,empty_pixels_;
             const C* camera_;
+
+            // used to create remap
+            Eigen::VectorXd xyz_ray_;
+            Eigen::VectorXd distorted_pixel_location_; 
+
+            // map parameters
+            cv::Size resolution_out_;
+            cv::Mat map_x_float_,map_y_float_, map_x_, map_y_;
+            std::vector<cv::Mat> maps_x_, maps_y_;
 
     };
     }
