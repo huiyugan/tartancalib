@@ -102,6 +102,7 @@ bool getPinhole(const C * camera, aslam::cameras::GridDetector gd,const boost::p
   tartan_.compute_reprojections();
   tartan_.compute_corners();
   tartan_.project_to_original_image();
+  tartan_.merge_obs();
   // std::cout << "tartan output: " << tartan_.get_xyz() << std::endl;
   // aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker("test");
 

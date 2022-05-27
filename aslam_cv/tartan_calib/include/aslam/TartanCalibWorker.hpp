@@ -19,6 +19,9 @@
 #include <opencv2/viz.hpp>
 #include <opencv2/highgui.hpp>
 #include <aslam/cameras/GridDetector.hpp>
+#include <opencv2/core/eigen.hpp>
+
+
 namespace aslam
 {
 
@@ -54,6 +57,10 @@ namespace aslam
             void compute_remaps(); 
             void compute_reprojections();
             void compute_corners();
+            void merge_obs(void);
+            void show_obs(aslam::cameras::GridCalibrationTargetObservation,bool);
+            void show_pinholes(std::vector<aslam::cameras::GridCalibrationTargetObservation>,bool);
+
                 
             /// \brief Serialization
             enum {CLASS_SERIALIZATION_VERSION = 4};
@@ -76,6 +83,8 @@ namespace aslam
             Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> xx_,yy_; //vector with x and y values in the global
             Eigen::MatrixXd fovs_, poses_, resolutions_;
             std::vector<Eigen::Matrix<float, 3, Eigen::Dynamic>> xyzs_;
+            
+            std::vector<unsigned int> outCornerIdx_;
             aslam::cameras::GridCalibrationTargetObservation obs_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
             int num_frames_,num_views_,num_points_,in_width_,in_height_,xyz_idx_,num_corners_;
@@ -95,6 +104,7 @@ namespace aslam
             std::vector<std::vector<cv::Mat>> reprojections_;
             std::vector<std::vector<aslam::cameras::GridCalibrationTargetObservation>> new_obslist_;
             aslam::cameras::GridDetector gd_;
+            std::vector<aslam::cameras::GridCalibrationTargetObservation> output_obslist_;
             
 
     };

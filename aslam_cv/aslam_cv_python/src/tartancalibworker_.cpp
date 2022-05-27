@@ -20,6 +20,7 @@ void exportTartan()
         .def("compute_reprojections",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::compute_reprojections)
         .def("compute_corners",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::compute_corners)
         .def("project_to_original_image",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::project_to_original_image)
+        .def("merge_obs",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::merge_obs)
         .def_pickle(sm::python::pickle_suite<aslam::cameras::TartanCalibWorker<CameraGeometryBase>>())
         ;
 }
