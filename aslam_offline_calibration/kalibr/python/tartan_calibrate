@@ -181,9 +181,9 @@ def main():
             for obs in observations:
                 obsdb.addObservation(cam_id, obs)
 
-            fovs = np.array([[90,90,90,90],[90,90,90,90]])
-            poses = np.array([[90,90,90,90],[90,180,270,0]])
-            resolutions = np.array([[1000,1000,1000,1000],[1000,1000,1000,1000]])
+            fovs = np.array([[90,90,90,90,90],[90,90,90,90,90]])
+            poses = np.array([[90,90,90,90,0],[0,180,270,90,0]])
+            resolutions = np.array([[1000,1000,1000,1000,1000],[1000,1000,1000,1000,1000]])
 
    
 
@@ -195,7 +195,7 @@ def main():
             print("\tDistortion initialized to: %s" % cam.geometry.projection().distortion().getParameters().flatten())
 
 
-            geometry = cam.geometry.getPinhole(observations,fovs,poses,resolutions,True)
+            geometry = cam.geometry.getPinhole(cam.ctarget.detector,observations,fovs,poses,resolutions,True)
             print(geometry)
             
             

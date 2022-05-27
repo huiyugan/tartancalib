@@ -90,15 +90,18 @@ boost::python::tuple estimateTransformation(const C * camera, aslam::cameras::Gr
 }
 
 template<typename C>
-bool getPinhole(const C * camera, const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions, const bool verbose)
+bool getPinhole(const C * camera, aslam::cameras::GridDetector gd,const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions, const bool verbose)
 {
   //convert python list to stl vector
   boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
   std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist(begin, end);
-  auto tartan_ = aslam::cameras::TartanCalibWorker<C>(camera,obslist,fovs,poses,resolutions,verbose);
+  auto tartan_ = aslam::cameras::TartanCalibWorker<C>(camera,gd,obslist,fovs,poses,resolutions,verbose);
 
   tartan_.compute_xyzs();
   tartan_.compute_remaps();
+  tartan_.compute_reprojections();
+  tartan_.compute_corners();
+  tartan_.project_to_original_image();
   // std::cout << "tartan output: " << tartan_.get_xyz() << std::endl;
   // aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker("test");
 
