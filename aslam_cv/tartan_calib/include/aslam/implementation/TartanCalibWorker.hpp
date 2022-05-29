@@ -53,6 +53,7 @@ namespace aslam
             // }
             if (imsave)
             {
+                
                 aslam::Time stamp = obs[0].time();
                 cv::imwrite("frame_"+std::to_string(stamp.toSec())+".png",img_total);
             }
@@ -97,29 +98,29 @@ namespace aslam
         template< typename C>
         void TartanCalibWorker<C>::merge_obs(void)
         {
-            output_obslist_.empty();
-            // we're looping over all frames
-            for (int i=0; i< num_frames_; i++)
-            {
-                obs_ = obslist_[i];
-                for (int j=0; j<num_views_;j++)
-                {
-                    new_obslist_[i][j].getCornersIdx(outCornerIdx_);
+            // output_obslist_.empty();
+            // // we're looping over all frames
+            // for (int i=0; i< num_frames_; i++)
+            // {
+            //     obs_ = obslist_[i];
+            //     for (int j=0; j<num_views_;j++)
+            //     {
+            //         new_obslist_[i][j].getCornersIdx(outCornerIdx_);
 
-                    std::vector<cv::Point2f> outCornerList;
-                    new_obslist_[i][j].getCornersImageFrame(outCornerList); 
+            //         std::vector<cv::Point2f> outCornerList;
+            //         new_obslist_[i][j].getCornersImageFrame(outCornerList); 
 
-                    for (int k=0; k< outCornerList.size(); k++)
-                    {
-                        Eigen::Vector2d b;
-                        b(0) = outCornerList[k].x;
-                        b(1) =  outCornerList[k].y;
-                        obs_.updateImagePoint(outCornerIdx_[k],b);
-                    }
-                }
-                output_obslist_.push_back(obs_); 
-                // show_obs(output_obslist_[i],true);            
-            }
+            //         for (int k=0; k< outCornerList.size(); k++)
+            //         {
+            //             Eigen::Vector2d b;
+            //             b(0) = outCornerList[k].x;
+            //             b(1) =  outCornerList[k].y;
+            //             obs_.updateImagePoint(outCornerIdx_[k],b);
+            //         }
+            //     }
+            //     output_obslist_.push_back(obs_); 
+            //     // show_obs(output_obslist_[i],true);            
+            // }
 
             
 
@@ -131,48 +132,40 @@ namespace aslam
         {
             for (int i=0; i<num_frames_; i++ )
             {
-           
-                for (int j=0; j< num_views_; j++)
+                for (auto &reprojection: reprojection_wrappers_ )
                 {
-                    obs_ = new_obslist_[i][j];
+                    obs_ = reprojection.obslist_[i];
                     obs_.getCornersIdx(outCornerIdx_);
 
-                    cv::Point2f img_center(resolutions_.col(j).coeff(1,0)/2.,resolutions_.col(j).coeff(0,0)/2.);
+                    cv::Point2f img_center(reprojection.resolution_.coeff(1,0)/2.,reprojection.resolution_.coeff(0,0)/2.);
                     std::vector<cv::Point2f> outCornerList;
                     obs_.getCornersImageFrame(outCornerList);
                     
                     num_corners_ = outCornerList.size();
                     xyz_.resize(3,num_corners_);
                     cv::Point2f corner;
-
-                    std::vector<float> x_s;
-                    std::vector<float> y_s;
                     
                     for (int k =0; k<num_corners_; k++)
                     {
-                        //scale points between -1 and 1
                         corner = outCornerList[k];
                         xyz_(0,k) = corner.x;
                         xyz_(1,k) = corner.y;
-                        x_s.push_back(corner.x);
-                        y_s.push_back(corner.y);
-
                     }
 
                     xyz_.row(0) -= img_center.x*Eigen::Matrix<float, 1,Eigen::Dynamic>::Ones(1,num_corners_);
                     xyz_.row(1) -= img_center.y*Eigen::Matrix<float, 1,Eigen::Dynamic>::Ones(1,num_corners_);
 
-                    xyz_.row(0)*=((tan(fovs_.col(j).coeff(0,0) / 2.0 / 180 * PI))/img_center.x);
-                    xyz_.row(1)*=((tan(fovs_.col(j).coeff(1,0) / 2.0 / 180 * PI))/img_center.y);
+                    xyz_.row(0)*=((tan(reprojection.fov_.coeff(0,0) / 2.0 / 180 * PI))/img_center.x);
+                    xyz_.row(1)*=((tan(reprojection.fov_.coeff(1,0) / 2.0 / 180 * PI))/img_center.y);
                     xyz_.row(2)=Eigen::Matrix<float, 1,Eigen::Dynamic>::Ones(1,num_corners_);
                     
-                    compute_rotation(poses_.col(j));
+                    compute_rotation(reprojection.pose_);
                     xyz_ = rot_mat_*xyz_;
                     
                     for (size_t k=0; k<num_corners_; k++)
                     {
-                        xyz_ray_ = xyz_.col(k).cast<double>();
-                        camera_->vsEuclideanToKeypoint(xyz_ray_,distorted_pixel_location_);
+                        xyz_ray_ = xyz_.col(k);
+                        camera_->vsEuclideanToKeypoint(xyz_ray_.cast<double>(),distorted_pixel_location_);
                         corner.x = distorted_pixel_location_(0);
                         corner.y = distorted_pixel_location_(1);
 
@@ -180,11 +173,10 @@ namespace aslam
                         b(0) = corner.x;
                         b(1) = corner.y;
 
-                        obs_.updateImagePoint(outCornerIdx_[k],b);
+                        new_obslist_[i].updateImagePoint(outCornerIdx_[k],b);
                     }
-                    obs_.setImage(obslist_[i].image());
-                    new_obslist_[i][j] = obs_;
                 }
+                show_obs(new_obslist_[i],true);
 
             }
 
@@ -198,16 +190,16 @@ namespace aslam
             {
                 std::vector<GridCalibrationTargetObservation> frame_obs;
                 
-                for (int j= 0; j< num_views_; j++)
+                for (auto &reprojection: reprojection_wrappers_ )
                 {
-                    gd_.findTargetNoTransformation(reprojections_[i][j],obs_);
-                    obs_.setTime(obslist_[i].time()); //preserving the time stamp
+                    obs_.setImage(reprojection.obslist_[i].image());
+                    gd_.findTargetNoTransformation(reprojection.obslist_[i].image(),obs_);
+                    obs_.setTime(obslist_[i].time());
+                    reprojection.obslist_[i] = obs_;
                     frame_obs.push_back(obs_);
                 }
                 show_pinholes(frame_obs,true);
-                new_obslist_.push_back(frame_obs);
             }
-            
         }
 
         template< typename C>
@@ -216,35 +208,39 @@ namespace aslam
             for (int i=0; i<num_frames_; i++)
             {
                 std::vector<cv::Mat> frame_reprojections;
-                for (int j=0; j< num_views_; j++)
+                for (auto &reprojection: reprojection_wrappers_ )
                 {
                     // SM_INFO_STREAM("New img \n");
                     cv::Mat undistorted_image_;
-                    cv::remap(obslist_[i].image(),undistorted_image_,maps_x_[j],maps_y_[j],cv::INTER_LINEAR,
+                    cv::remap(reprojection.obslist_[i].image(),undistorted_image_,reprojection.map_x_,reprojection.map_y_,cv::INTER_LINEAR,
                     cv::BORDER_CONSTANT);
+                    reprojection.obslist_[i].setImage(undistorted_image_);
+
+                    ///TODO:Remove
                     frame_reprojections.push_back(undistorted_image_);
                 }
+                ///TODO:Remove
                 reprojections_.push_back(frame_reprojections);
             }  
         }
 
 
         template< typename C>
-        void TartanCalibWorker<C>::compute_remap(const Eigen::Matrix<float, 3, Eigen::Dynamic>& xyz, const Eigen::MatrixXd& resolution) 
+        void TartanCalibWorker<C>::compute_remap(aslam::cameras::ReprojectionWrapper<C>& reprojection) 
         {
-            xyz_ = xyz;
             empty_pixels_ = false;
-            resolution_out_ = cv::Size(resolution.coeff(1,0),resolution.coeff(0,0));
+            resolution_out_ = cv::Size(reprojection.resolution_.coeff(1,0),reprojection.resolution_.coeff(0,0));
             map_x_float_ = cv::Mat(resolution_out_, CV_32FC1);
             map_y_float_ = cv::Mat(resolution_out_, CV_32FC1);
 
             // // Compute the remap maps
-            for (size_t v = 0; v < resolution.coeff(0,0); ++v) {
-                for (size_t u = 0; u < resolution.coeff(1,0); ++u) {
-                xyz_idx_ = u+v*resolution.coeff(1,0);
-                // SM_INFO_STREAM(std::to_string(xyz_idx_)+" \n");
-                xyz_ray_ = xyz_.col(xyz_idx_).cast<double>();
-                camera_->vsEuclideanToKeypoint(xyz_ray_,distorted_pixel_location_);
+            for (size_t v = 0; v < reprojection.resolution_.coeff(0,0); ++v) {
+                for (size_t u = 0; u < reprojection.resolution_.coeff(1,0); ++u) {
+                xyz_idx_ = u+v*reprojection.resolution_.coeff(1,0);
+                xyz_ray_ = reprojection.xyz_.col(xyz_idx_);
+                
+                camera_->vsEuclideanToKeypoint(xyz_ray_.cast<double>(),distorted_pixel_location_);
+
                 //insert point into map
                 map_x_float_.at<float>(v, u) = static_cast<float>(distorted_pixel_location_(0));
                 map_y_float_.at<float>(v, u) = static_cast<float>(distorted_pixel_location_(1));
@@ -253,19 +249,21 @@ namespace aslam
             cv::Mat map_x_, map_y_;
             cv::convertMaps(map_x_float_, map_y_float_, map_x_, map_y_, CV_16SC2);
             
+            reprojection.map_x_ = map_x_;
+            reprojection.map_y_ = map_y_;
+
+            ///TODO: remove
             maps_x_.push_back(map_x_);
             maps_y_.push_back(map_y_);
-
         }
 
         template< typename C>
         void TartanCalibWorker<C>::compute_remaps(void)
         {
-            for (size_t i =0; i < num_views_; i++)
+            for (auto &reprojection: reprojection_wrappers_ )
             {
-                compute_remap(xyzs_[i],resolutions_.col(i));
+                compute_remap(reprojection);
             }
-
         }
       
 
@@ -296,23 +294,25 @@ namespace aslam
         }
         
         template< typename C>
-        void TartanCalibWorker<C>::compute_xyz(const Eigen::MatrixXd& fov, const Eigen::MatrixXd& resolution,const Eigen::MatrixXd& pose)
+        void TartanCalibWorker<C>::compute_xyz( aslam::cameras::ReprojectionWrapper<C>& reprojection)
         {
-            num_points_ = resolution.coeff(0,0)*resolution.coeff(1,0);
+            num_points_ = reprojection.resolution_.coeff(0,0)*reprojection.resolution_.coeff(1,0);
             xyz_.resize(3,num_points_);
             
-            xyz_.row(0) = Eigen::Matrix<float, 1,Eigen::Dynamic>::LinSpaced(resolution.coeff(1,0),-1,1).matrix().replicate(1,resolution.coeff(0,0));
+            xyz_.row(0) = Eigen::Matrix<float, 1,Eigen::Dynamic>::LinSpaced(reprojection.resolution_.coeff(1,0),-1,1).matrix().replicate(1,reprojection.resolution_.coeff(0,0));
             
-            yy_ = Eigen::Matrix<float, 1,Eigen::Dynamic>::LinSpaced(resolution.coeff(0,0),-1,1).matrix().replicate(resolution.coeff(1,0),1);
+            yy_ = Eigen::Matrix<float, 1,Eigen::Dynamic>::LinSpaced(reprojection.resolution_.coeff(0,0),-1,1).matrix().replicate(reprojection.resolution_.coeff(1,0),1);
             yy_.resize(1,num_points_);
             xyz_.row(1) = yy_;
 
-            xyz_.row(0)*= tan(fov.coeff(0,0) / 2.0 / 180 * PI);
-            xyz_.row(1)*= tan(fov.coeff(1,0) / 2.0 / 180 * PI);
+            xyz_.row(0)*= tan(reprojection.fov_.coeff(0,0) / 2.0 / 180 * PI);
+            xyz_.row(1)*= tan(reprojection.fov_.coeff(1,0) / 2.0 / 180 * PI);
             xyz_.row(2) = Eigen::Matrix<float, 1,Eigen::Dynamic>::Ones(1,num_points_);
-            compute_rotation(pose);
+            compute_rotation(reprojection.pose_);
             xyz_=rot_mat_*xyz_;
+            reprojection.xyz_ = xyz_;
 
+            ///TODO:remove 
             xyzs_.push_back(xyz_);
             
         }
@@ -321,28 +321,33 @@ namespace aslam
         void TartanCalibWorker<C>::compute_xyzs(void)
         {
 
-                xyzs_.empty();
-                for (int i = 0; i< num_views_; i++)
+
+                for (auto &reprojection: reprojection_wrappers_ )
                 {
-                    compute_xyz(fovs_.col(i),resolutions_.col(i),poses_.col(i));
+                    compute_xyz(reprojection);
                 }
-                
-                if (verbose_)
+
+                if (debug_mode_==DebugMode::pointcloudprojection)
                 {
                     cv::viz::Viz3d myWindow("Coordinate Frame");
                     myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
                     std::vector<cv::Point3f> pts3d;
                     
-                    for (int j = 0; j<num_views_; j++)
+                    for (auto reprojection: reprojection_wrappers_ )
                     {
                         pts3d.empty();
-                        for (int i = 0; i<xyzs_[j].cols() ; i ++)
+                        if (reprojection.xyz_.cols() > 0)
                         {
-                            pts3d.push_back(cv::Point3f(xyzs_[j].coeff(0,i),xyzs_[j].coeff(1,i),xyzs_[j].coeff(2,i)));
+                            for (int i = 0; i<reprojection.xyz_.cols() ; i ++)
+                            {
+                                pts3d.push_back(cv::Point3f(reprojection.xyz_.coeff(0,i),reprojection.xyz_.coeff(1,i),reprojection.xyz_.coeff(2,i)));
+                            }
+                            cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
+                            myWindow.showWidget("cloud 1", cloud_widget1);
                         }
 
-                        cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
-                        myWindow.showWidget("cloud 1", cloud_widget1);
+
+
                     }
                     myWindow.spin();
 
