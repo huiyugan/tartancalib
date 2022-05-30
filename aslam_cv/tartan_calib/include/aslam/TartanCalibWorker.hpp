@@ -30,7 +30,8 @@ namespace aslam
       enum class DebugMode 
       {
         pointcloudprojection,
-        frameprojection,
+        pinholeprojection,
+        originalprojection,
         none
       };
       
@@ -69,14 +70,13 @@ namespace aslam
       public boost::enable_shared_from_this<TartanCalibWorker<C>>
     {
         public:  
-            TartanCalibWorker(const C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::string& debug_mode)
+            TartanCalibWorker(const C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
             : obslist_(obslist),
             gd_(gd),
             camera_(camera),
             fovs_(fovs),
             poses_(poses),
             resolutions_(resolutions),
-            debug_mode_(StringToDebug(debug_mode)),
             in_width_(obslist[0].imCols()),
             in_height_(obslist[0].imRows()) // assumption: this array only contains images of the same resolution, as we expect to create one TartanCalibWorker class per camera
              { 
@@ -85,12 +85,17 @@ namespace aslam
               new_obslist_ = obslist_; // eventually we're outputting this variable, but we initialize it with the right observations (i.e., images and time stamps)
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols(), "All inserted tartan matrices need the same number of columns." );
               
-
               // loading reprojectionwrapper classes
               for (int i = 0; i < num_views_; i++)
               {
                 reprojection_wrappers_.push_back(ReprojectionWrapper<C>(obslist_,fovs.col(i),poses.col(i),resolutions.col(i),StringToReprojectionMode(reproj_types[i])));
               }
+
+              for (auto debug_mode : debug_modes)
+              {
+                debug_modes_.push_back(StringToDebug(debug_mode));
+              }
+
             
             };
             TartanCalibWorker(){};
@@ -103,9 +108,9 @@ namespace aslam
             void compute_remaps(); 
             void compute_reprojections();
             void compute_corners();
-            void merge_obs(void);
-            void show_obs(aslam::cameras::GridCalibrationTargetObservation,bool);
-            void show_pinholes(std::vector<aslam::cameras::GridCalibrationTargetObservation>,bool);
+            cv::Mat get_mat(std::vector<aslam::cameras::GridCalibrationTargetObservation>,bool,float,std::vector<cv::Scalar> );   
+            void debug_show(void);
+
             
            
             std::string ReprojectionModeToString(DebugMode e)
@@ -130,7 +135,8 @@ namespace aslam
               switch (e)
               {
                 case DebugMode::pointcloudprojection: return "pointcloudprojection";
-                case DebugMode::frameprojection: return "frameprojection";
+                case DebugMode::pinholeprojection: return "pinholeprojection";
+                case DebugMode::originalprojection: return "originalprojection";
                 case DebugMode::none: return "none";
               }
             }
@@ -138,7 +144,8 @@ namespace aslam
             {
               std::map<std::string, DebugMode> debug_mode = boost::assign::map_list_of
               ("pointcloudprojection",DebugMode::pointcloudprojection)
-              ("frameprojection", DebugMode::frameprojection)
+              ("pinholeprojection", DebugMode::pinholeprojection)
+              ("originalprojection",DebugMode::originalprojection)
               ("none",DebugMode::none);
               return debug_mode[e];
             }
@@ -161,7 +168,7 @@ namespace aslam
           
         private:
             // key class variables
-            DebugMode debug_mode_; //determines what the user will see
+            std::vector<DebugMode> debug_modes_; //determines what the user will see
             std::vector<aslam::cameras::ReprojectionWrapper<C>> reprojection_wrappers_; 
             std::vector<std::string> reproj_types_;
 

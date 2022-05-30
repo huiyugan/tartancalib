@@ -195,7 +195,7 @@ def main():
             print("\tDistortion initialized to: %s" % cam.geometry.projection().distortion().getParameters().flatten())
 
 
-            geometry = cam.geometry.getProjections(cam.ctarget.detector,observations,fovs,poses,resolutions,["pinhole","pinhole","pinhole","pinhole","pinhole"],"pointcloudprojection")
+            geometry = cam.geometry.getProjections(cam.ctarget.detector,observations,fovs,poses,resolutions,["pinhole","pinhole","pinhole","pinhole","pinhole"],["originalprojection","pinholeprojection"])
             print(geometry)
             
             

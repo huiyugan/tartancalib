@@ -90,7 +90,7 @@ boost::python::tuple estimateTransformation(const C * camera, aslam::cameras::Gr
 }
 
 template<typename C>
-bool getProjections(const C * camera, aslam::cameras::GridDetector gd,const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const  boost::python::list & reproj_pylist, const std::string& debug_mode)
+bool getProjections(const C * camera, aslam::cameras::GridDetector gd,const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const  boost::python::list & reproj_pylist, const  boost::python::list & debug_modes)
 {
   //convert obs python list to stl vector
   boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
@@ -103,15 +103,22 @@ bool getProjections(const C * camera, aslam::cameras::GridDetector gd,const boos
     reproj_types.push_back(boost::python::extract<std::string>(reproj_pylist[i]));
   }
 
+  std::vector<std::string> debug_modes_;
+  for (int i=0; i< len(debug_modes);i++)
+  {
+    debug_modes_.push_back(boost::python::extract<std::string>(debug_modes[i]));
+  }
 
-  auto tartan_ = aslam::cameras::TartanCalibWorker<C>(camera,gd,obslist,fovs,poses,resolutions,reproj_types,debug_mode);
+
+
+  auto tartan_ = aslam::cameras::TartanCalibWorker<C>(camera,gd,obslist,fovs,poses,resolutions,reproj_types,debug_modes_);
 
   tartan_.compute_xyzs();
   tartan_.compute_remaps();
   tartan_.compute_reprojections();
   tartan_.compute_corners();
   tartan_.project_to_original_image();
-  tartan_.merge_obs();
+  tartan_.debug_show();
   // std::cout << "tartan output: " << tartan_.get_xyz() << std::endl;
   // aslam::cameras::TartanCalibWorker tartan_ = aslam::cameras::TartanCalibWorker("test");
 

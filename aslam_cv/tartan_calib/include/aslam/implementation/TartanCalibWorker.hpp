@@ -4,135 +4,133 @@ namespace aslam
 {
     namespace cameras
     {
-        /// \brief This is a more or less hardcoded function to show 4 pinhole projections into one view, including their detected corners
         template< typename C>
-        void TartanCalibWorker<C>::show_pinholes(std::vector<aslam::cameras::GridCalibrationTargetObservation> obs, bool imsave)
+        void TartanCalibWorker<C>::debug_show(void)
+        {   
+            for (auto debug_mode_:debug_modes_)
+            {
+                switch(debug_mode_)
+                {
+                    case DebugMode::originalprojection:
+                    {
+                        SM_INFO_STREAM("Saving the original image with all detected corners. Red corners are the originally detected corners, green are new corners.");
+                        
+                        for (int i =0; i<num_frames_; i++)
+                        {
+                            std::vector<cv::Scalar> colors;
+                            std::vector<aslam::cameras::GridCalibrationTargetObservation> obs;
+                            
+                            // these are the newly found corners projected back into the original coordinate frame 
+                            obs.push_back(new_obslist_[i]);
+                            colors.push_back(cv::Scalar(0,255,0));
+        
+                            // add the original image
+                            obs.push_back(obslist_[i]);
+                            colors.push_back(cv::Scalar(0,0,255));
+                            aslam::Time stamp = obslist_[i].time();
+
+                            cv::Mat color_img = get_mat(obs,true,0.,colors);
+                            cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_original.png",color_img);
+                        }
+                        
+                        break;
+                    }
+                    case DebugMode::pinholeprojection:
+                    {
+                        SM_INFO_STREAM("This mode is pretty hardcoded and shows the cube pinhole configuration in a cross, including all detected corners.");
+                        
+                        int img_size = resolutions_(0,0); //hard assumption: all pictures are square and of the same size
+                        
+                        std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist;
+                        std::vector<cv::Scalar> colors;
+                        colors.push_back(cv::Scalar(0,255,0));
+
+                        for (int i=0; i<num_frames_; i++)
+                        {
+                            cv::Mat img_total(3*img_size,3*img_size,CV_8UC3,CV_RGB(0,0,0)); //3X because we're making a cross of pinhole projections
+                            
+                            obslist.clear();
+                            cv::Mat temp_img;
+                            obslist.push_back(reprojection_wrappers_[3].obslist_[i]);
+                            temp_img = get_mat(obslist,true,-90.,colors);
+                            temp_img.copyTo(img_total(cv::Rect(2*img_size,img_size,img_size,img_size)));
+
+                            obslist.clear();
+                                
+                            obslist.push_back(reprojection_wrappers_[0].obslist_[i]);
+                            temp_img = get_mat(obslist,true,0.,colors);
+                            temp_img.copyTo(img_total(cv::Rect(img_size,0,img_size,img_size)));
+                        
+                            obslist.clear();
+                            obslist.push_back(reprojection_wrappers_[2].obslist_[i]);
+                            temp_img = get_mat(obslist,true,90.,colors);
+                            temp_img.copyTo(img_total(cv::Rect(0,img_size,img_size,img_size)));
+
+                            obslist.clear();
+                            obslist.push_back(reprojection_wrappers_[1].obslist_[i]);
+                            temp_img = get_mat(obslist,true,180.,colors);
+                            temp_img.copyTo(img_total(cv::Rect(img_size,2*img_size,img_size,img_size)));
+                            
+                            obslist.clear();
+                            obslist.push_back(reprojection_wrappers_[4].obslist_[i]);
+                            temp_img = get_mat(obslist,true,0.,colors);
+                            temp_img.copyTo(img_total(cv::Rect(img_size,img_size,img_size,img_size)));
+                            
+                            aslam::Time stamp = obslist_[i].time();
+                            cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_pinhole.png",img_total);
+                        }
+
+                        break;
+                    }
+                    default:
+                        SM_INFO_STREAM("Default debug mode means no plotting.");
+
+                }
+            }
+
+
+        }
+
+        template< typename C>
+        cv::Mat TartanCalibWorker<C>::get_mat(std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist, bool show_corners, float rotation_angle,std::vector<cv::Scalar> colors)
         {
-            int img_size = resolutions_(0,0); //hard assumption: all pictures are square and of the same size
-            cv::Mat img_total = cv::Mat::zeros(3*img_size,3*img_size,CV_32F); //3X because we're making a cross of pinhole projections
-            cv::Point2f src_center(img_size/2.0, img_size/2.0);
-            cv::Mat rot_mat = cv::getRotationMatrix2D(src_center, -90, 1.0);  
+            cv::Mat img_gray = obslist[0].image(); //asumption: all obs have the same image, just different corners
+            cv::Mat img_color;
+            cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR); //convert to color to be able to plot colored dots
+
+            std::vector<cv::Point2f> outCornerList;
+            
+            // getting corners as circles
+            if (show_corners)
+            {
+                for (int i=0; i<obslist.size();i++)
+                {
+                    obslist[i].getCornersImageFrame(outCornerList);   
+                        for (auto corner : outCornerList)
+                        {
+                            cv::circle(img_color, corner,5, colors[i],2);
+                        }         
+                }
+            }
+            
+            // performing any desired rotation
+            cv::Point2f src_center(img_gray.cols/2.0, img_gray.rows/2.0);
+            cv::Mat rot_mat = cv::getRotationMatrix2D(src_center, rotation_angle, 1.0);  
 
             cv::Mat dst ;
-            cv::warpAffine(obs[3].image(), dst, rot_mat, cv::Size(img_size,img_size));
-            dst.copyTo(img_total(cv::Rect(2*img_size,img_size,img_size,img_size)));
+            cv::warpAffine(img_color, dst, rot_mat, cv::Size(img_gray.cols,img_gray.rows));
 
-
-            // img_total(cv::Range(0,img_size),cv::Range(img_size,2*img_size)) = obs[2].image();
-            obs[0].image().copyTo(img_total(cv::Rect(img_size,0,img_size,img_size)));
-            
-            rot_mat = cv::getRotationMatrix2D(src_center, 90, 1.0); 
-            cv::warpAffine(obs[2].image(), dst, rot_mat, cv::Size(img_size,img_size));
-            dst.copyTo(img_total(cv::Rect(0,img_size,img_size,img_size)));
-
-            rot_mat = cv::getRotationMatrix2D(src_center, 180, 1.0); 
-
-            cv::warpAffine(obs[1].image(), dst, rot_mat, cv::Size(img_size,img_size));
-            dst.copyTo(img_total(cv::Rect(img_size,2*img_size,img_size,img_size)));
-            
-            obs[4].image().copyTo(img_total(cv::Rect(img_size,img_size,img_size,img_size))); // img_center
-            // cv::imshow("is this not black?",obs[2].image());
-            // cv::waitKey(2000);
-
-            // cv::Mat img_gray = obs[0].image();
-            // cv::Mat img_color;
-            // cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR);
-            // int num_views = obs.size();
-
-            // for (int i = 0; i<num_views;i++)
-            // {
-            //     // plot the original detections as red circles
-            //     std::vector<cv::Point2f> outCornerList;
-            //     obs_ = obs[i];
-            //     obs_.getCornersImageFrame(outCornerList);
-            //     SM_INFO_STREAM("sizee " << std::to_string(obs.size()));
-            //     for (auto corner_old:outCornerList)
-            //     {
-            //         cv::circle(img_color, corner_old,5, cv::Scalar(0,255,0),2);
-            //     }
-            // }
-            if (imsave)
-            {
-                
-                aslam::Time stamp = obs[0].time();
-                cv::imwrite("frame_"+std::to_string(stamp.toSec())+".png",img_total);
-            }
-            else{
-                cv::imshow("Showing some obs",img_total); //assumption is that all obs come from the same image and in the same frame!!
-                cv::waitKey(2000);
-            }
-
+            return dst;
         }
 
-        template< typename C>
-        void TartanCalibWorker<C>::show_obs(aslam::cameras::GridCalibrationTargetObservation obs, bool imsave)
-        {
-            cv::Mat img_gray = obs.image();
-            cv::Mat img_color;
-            cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR);
 
-            // plot the original detections as red circles
-            std::vector<cv::Point2f> outCornerList;
-            obs_ = obs;
-            obs_.getCornersImageFrame(outCornerList);
-            for (auto corner_old:outCornerList)
-            {
-                cv::circle(img_color, corner_old,5, cv::Scalar(0,255,0),2);
-            }
-
-            if (imsave)
-            {
-                aslam::Time stamp = obs_.time();
-                cv::imwrite("frame_"+std::to_string(stamp.toSec())+".png",img_color);
-            }
-            else{
-                cv::imshow("Showing some obs",img_color); //assumption is that all obs come from the same image and in the same frame!!
-                cv::waitKey(2000);
-            }
-
-        }
-
-        /// \brief this function will go over all the observations and project it back onto the original image frame
-        /// the information remains within the information class
-
-        template< typename C>
-        void TartanCalibWorker<C>::merge_obs(void)
-        {
-            // output_obslist_.empty();
-            // // we're looping over all frames
-            // for (int i=0; i< num_frames_; i++)
-            // {
-            //     obs_ = obslist_[i];
-            //     for (int j=0; j<num_views_;j++)
-            //     {
-            //         new_obslist_[i][j].getCornersIdx(outCornerIdx_);
-
-            //         std::vector<cv::Point2f> outCornerList;
-            //         new_obslist_[i][j].getCornersImageFrame(outCornerList); 
-
-            //         for (int k=0; k< outCornerList.size(); k++)
-            //         {
-            //             Eigen::Vector2d b;
-            //             b(0) = outCornerList[k].x;
-            //             b(1) =  outCornerList[k].y;
-            //             obs_.updateImagePoint(outCornerIdx_[k],b);
-            //         }
-            //     }
-            //     output_obslist_.push_back(obs_); 
-            //     // show_obs(output_obslist_[i],true);            
-            // }
-
-            
-
-
-        }
 
         template< typename C>
         void TartanCalibWorker<C>::project_to_original_image(void)
         {
             for (int i=0; i<num_frames_; i++ )
             {
-                for (auto &reprojection: reprojection_wrappers_ )
+                for (auto reprojection: reprojection_wrappers_ )
                 {
                     obs_ = reprojection.obslist_[i];
                     obs_.getCornersIdx(outCornerIdx_);
@@ -176,8 +174,6 @@ namespace aslam
                         new_obslist_[i].updateImagePoint(outCornerIdx_[k],b);
                     }
                 }
-                show_obs(new_obslist_[i],true);
-
             }
 
 
@@ -188,7 +184,6 @@ namespace aslam
         {
             for (int i= 0; i<num_frames_; i++)
             {
-                std::vector<GridCalibrationTargetObservation> frame_obs;
                 
                 for (auto &reprojection: reprojection_wrappers_ )
                 {
@@ -196,9 +191,7 @@ namespace aslam
                     gd_.findTargetNoTransformation(reprojection.obslist_[i].image(),obs_);
                     obs_.setTime(obslist_[i].time());
                     reprojection.obslist_[i] = obs_;
-                    frame_obs.push_back(obs_);
                 }
-                show_pinholes(frame_obs,true);
             }
         }
 
@@ -327,31 +320,31 @@ namespace aslam
                     compute_xyz(reprojection);
                 }
 
-                if (debug_mode_==DebugMode::pointcloudprojection)
+                for (auto debug_mode_ : debug_modes_)
                 {
-                    cv::viz::Viz3d myWindow("Coordinate Frame");
-                    myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-                    std::vector<cv::Point3f> pts3d;
-                    
-                    for (auto reprojection: reprojection_wrappers_ )
+                    if (debug_mode_==DebugMode::pointcloudprojection)
                     {
-                        pts3d.empty();
-                        if (reprojection.xyz_.cols() > 0)
+                        cv::viz::Viz3d myWindow("Coordinate Frame");
+                        myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
+                        std::vector<cv::Point3f> pts3d;
+                        
+                        for (auto reprojection: reprojection_wrappers_ )
                         {
-                            for (int i = 0; i<reprojection.xyz_.cols() ; i ++)
+                            pts3d.empty();
+                            if (reprojection.xyz_.cols() > 0)
                             {
-                                pts3d.push_back(cv::Point3f(reprojection.xyz_.coeff(0,i),reprojection.xyz_.coeff(1,i),reprojection.xyz_.coeff(2,i)));
+                                for (int i = 0; i<reprojection.xyz_.cols() ; i ++)
+                                {
+                                    pts3d.push_back(cv::Point3f(reprojection.xyz_.coeff(0,i),reprojection.xyz_.coeff(1,i),reprojection.xyz_.coeff(2,i)));
+                                }
+                                cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
+                                myWindow.showWidget("cloud 1", cloud_widget1);
                             }
-                            cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
-                            myWindow.showWidget("cloud 1", cloud_widget1);
                         }
-
-
-
+                        myWindow.spin();
                     }
-                    myWindow.spin();
-
                 }
+
 
         }
     }
