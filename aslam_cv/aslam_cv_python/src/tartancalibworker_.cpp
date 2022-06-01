@@ -21,6 +21,7 @@ void exportTartan()
         .def("compute_corners",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::compute_corners)
         .def("project_to_original_image",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::project_to_original_image)
         .def("debug_show",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::debug_show)
+        .def("getNewObs",&aslam::cameras::TartanCalibWorker<CameraGeometryBase>::getNewObs)
         .def_pickle(sm::python::pickle_suite<aslam::cameras::TartanCalibWorker<CameraGeometryBase>>())
         ;
 }

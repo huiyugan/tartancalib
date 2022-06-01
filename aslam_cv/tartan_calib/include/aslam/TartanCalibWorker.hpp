@@ -21,6 +21,10 @@
 #include <aslam/cameras/GridDetector.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <boost/assign/list_of.hpp> // for 'map_list_of()'
+#include <sm/python/Id.hpp>
+#include <aslam/matplotlibcpp.h>
+#include <ctime>
+#include <fstream>
 
 namespace aslam
 {
@@ -32,12 +36,16 @@ namespace aslam
         pointcloudprojection,
         pinholeprojection,
         originalprojection,
+        targetpointcloud,
+        individualprojections,
+        reprojectionpoints,
         none
       };
       
       enum class ReprojectionMode 
       {
         pinhole,
+        homography,
         none
       };
 
@@ -60,6 +68,7 @@ namespace aslam
         std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
         Eigen::MatrixXd fov_,pose_,resolution_;
         cv::Mat map_x_, map_y_;
+        std::vector<cv::Mat> homography_;
         ReprojectionMode reproj_type_;
         Eigen::Matrix<float, 3, Eigen::Dynamic> xyz_;
     };
@@ -83,7 +92,7 @@ namespace aslam
               num_frames_ = obslist.size();
               num_views_ = fovs.cols();
               new_obslist_ = obslist_; // eventually we're outputting this variable, but we initialize it with the right observations (i.e., images and time stamps)
-              SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols(), "All inserted tartan matrices need the same number of columns." );
+              SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() && resolutions_.cols() == reproj_types.size(), "All inserted tartan matrices need the same number of columns." );
               
               // loading reprojectionwrapper classes
               for (int i = 0; i < num_views_; i++)
@@ -96,6 +105,13 @@ namespace aslam
                 debug_modes_.push_back(StringToDebug(debug_mode));
               }
 
+
+              for (auto obs: obslist_)
+              {
+                obs.getCornersIdx(outCornerIdx_);
+                num_corners_start+=outCornerIdx_.size();
+              }
+              SM_INFO_STREAM("Started tartan calib with "<<num_corners_start<<" points.");
             
             };
             TartanCalibWorker(){};
@@ -108,16 +124,19 @@ namespace aslam
             void compute_remaps(); 
             void compute_reprojections();
             void compute_corners();
-            cv::Mat get_mat(std::vector<aslam::cameras::GridCalibrationTargetObservation>,bool,float,std::vector<cv::Scalar> );   
+            cv::Mat get_mat(std::vector<aslam::cameras::GridCalibrationTargetObservation>,bool,float,std::vector<cv::Scalar> ,float);   
             void debug_show(void);
+            std::vector<aslam::cameras::GridCalibrationTargetObservation> getNewObs(void);
+            void homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection );
 
             
            
-            std::string ReprojectionModeToString(DebugMode e)
+            std::string ReprojectionModeToString(ReprojectionMode e)
             {
               switch (e)
               {
                 case ReprojectionMode::pinhole: return "pinhole";
+                case ReprojectionMode::homography: return "homography";
                 case ReprojectionMode::none: return "none";
               }
             }
@@ -125,6 +144,7 @@ namespace aslam
             {
               std::map<std::string, ReprojectionMode> reprojection_mode = boost::assign::map_list_of
               ("pinhole",ReprojectionMode::pinhole)
+              ("homography",ReprojectionMode::homography)
               ("none",ReprojectionMode::none);
               return reprojection_mode[e];
             }
@@ -137,6 +157,9 @@ namespace aslam
                 case DebugMode::pointcloudprojection: return "pointcloudprojection";
                 case DebugMode::pinholeprojection: return "pinholeprojection";
                 case DebugMode::originalprojection: return "originalprojection";
+                case DebugMode::targetpointcloud: return "targetpointcloud";
+                case DebugMode::individualprojections: return "individualprojections";
+                case DebugMode::reprojectionpoints: return "reprojectionpoints";
                 case DebugMode::none: return "none";
               }
             }
@@ -146,8 +169,21 @@ namespace aslam
               ("pointcloudprojection",DebugMode::pointcloudprojection)
               ("pinholeprojection", DebugMode::pinholeprojection)
               ("originalprojection",DebugMode::originalprojection)
+              ("targetpointcloud",DebugMode::targetpointcloud)
+              ("individualprojections",DebugMode::individualprojections)
+              ("reprojectionpoints",DebugMode::reprojectionpoints)
               ("none",DebugMode::none);
               return debug_mode[e];
+            }
+            // Converts a C++ vector to a python list
+            template <class T>
+            boost::python::list toPythonList(std::vector<T> vector) {
+              typename std::vector<T>::iterator iter;
+              boost::python::list list;
+              for (iter = vector.begin(); iter != vector.end(); ++iter) {
+                list.append(*iter);
+              }
+            return list;
             }
 
                 
@@ -182,6 +218,8 @@ namespace aslam
             aslam::cameras::GridCalibrationTargetObservation obs_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
             int num_frames_,num_views_,num_points_,in_width_,in_height_,xyz_idx_,num_corners_;
+            int num_corners_start =0;
+            int num_corners_end =0;
             float rot_x_, rot_z_;
             bool verbose_,empty_pixels_;
             const C* camera_;
@@ -199,6 +237,7 @@ namespace aslam
             std::vector<aslam::cameras::GridCalibrationTargetObservation> new_obslist_;
             aslam::cameras::GridDetector gd_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> output_obslist_;
+            std::string log_file = "log.txt";
             
 
     };
