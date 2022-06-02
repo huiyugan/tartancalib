@@ -10,8 +10,20 @@ namespace aslam
         {  
             reprojection.homography_.clear();
             for (int i=0; i<num_frames_; i++)
-            {
+            { 
+                std::vector<cv::Scalar> colors;
+                colors.push_back(cv::Scalar(0,255,0));
+
+                // std::vector<aslam::cameras::GridCalibrationTargetObservation> obslistt;
+                // obslistt.push_back(reprojection.obslist_[i]);
+                // cv::imshow("test",get_mat(obslistt,true,0.,colors,5.0));
+                // cv::waitKey(2000);
+
                 aslam::cameras::GridCalibrationTargetObservation& obs = reprojection.obslist_[i];
+                // obs.setImage(warped_img);
+                // gd_.findTargetNoTransformation(reprojection.obslist_[i].image(),obs); //find the corners in the pinhole reprojection
+
+
                 cv::Mat img = obs.image();
                 std::vector<cv::Point2f> outCornerList_imageframe;  
                 std::vector<cv::Point2f> outCornerList_desired;
@@ -45,28 +57,29 @@ namespace aslam
                     }
 
                     reprojection.homography_[i] = cv::findHomography(outCornerList_imageframe,outCornerList_desired);
+                    
+                    // it's possible findHomography returns an empty matrix 
+                    // https://stackoverflow.com/questions/28331296/opencv-findhomography-generating-an-empty-matrix
+                    if (reprojection.homography_[i].empty())
+                    {
+                        reprojection.homography_[i] = cv::Mat::eye(3,3,CV_64F);
+                    }
+
                     cv::Mat warped_img;
                     cv::warpPerspective(obs.image(),warped_img,reprojection.homography_[i],obs.image().size());
-
                     obs.setImage(warped_img);
-                    gd_.findTargetNoTransformation(warped_img,obs);
-
+                    gd_.findTargetNoTransformation(obs.image(),obs);
 
                     std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist;
                     obslist.push_back(obs);
 
-                    std::vector<cv::Scalar> colors;
-                    colors.push_back(cv::Scalar(0,255,0));
+                    
                     cv::Mat cornered_img = get_mat(obslist,true,0.,colors,5.0);
                     aslam::Time stamp = obs.time();
 
                     cv::imwrite("homography_"+std::to_string(stamp.toSec())+".png",cornered_img);
-                    // cv::waitKey(5000);                
                 }
-
-
             }
-            
         }
 
         template< typename C>
@@ -303,7 +316,7 @@ namespace aslam
                     obs_.getCornersIdx(outCornerIdx_);
 
 
-                    if (reprojection.reproj_type_ == ReprojectionMode::pinhole)
+                    if (reprojection.reproj_type_ == ReprojectionMode::pinhole || reprojection.reproj_type_==ReprojectionMode::homography)
                     {
                         cv::Point2f img_center(reprojection.resolution_.coeff(1,0)/2.,reprojection.resolution_.coeff(0,0)/2.);
                         std::vector<cv::Point2f> outCornerList;
@@ -312,10 +325,21 @@ namespace aslam
                         num_corners_ = outCornerList.size();
                         xyz_.resize(3,num_corners_);
                         cv::Point2f corner;
+
+
+
+                        if (reprojection.reproj_type_ == ReprojectionMode::homography && num_corners_ >0 )
+                        {
+                            std::vector<cv::Point2f> pinholePoints;
+                            cv::perspectiveTransform(outCornerList,pinholePoints,reprojection.homography_[i].inv());
+                            outCornerList = pinholePoints;
+                        }
                         
                         for (int k =0; k<num_corners_; k++)
                         {
                             corner = outCornerList[k];
+
+
                             xyz_(0,k) = corner.x;
                             xyz_(1,k) = corner.y;
                         }
@@ -364,6 +388,16 @@ namespace aslam
                     reprojection.obslist_[i] = obs_;
                 }
             }
+            
+            for (auto &reprojection: reprojection_wrappers_ )
+            {
+                // if a homography was requested we'll try to find the homography here
+                // at a later point when merging in the corners we check this again and use the corners
+                if(reprojection.reproj_type_ == ReprojectionMode::homography)
+                {
+                    homography_reprojection(reprojection);
+                }
+            }
         }
 
         template< typename C>
@@ -389,16 +423,7 @@ namespace aslam
                 ///TODO:Remove
                 reprojections_.push_back(frame_reprojections);
             }
-
-            for (auto &reprojection: reprojection_wrappers_ )
-            {
-                // if a homography was requested we'll try to find the homography here
-                // at a later point when merging in the corners we check this again and use the corners
-                if(reprojection.reproj_type_ == ReprojectionMode::homography)
-                {
-                    homography_reprojection(reprojection);
-                }
-            }  
+  
         }
 
         template< typename C>
