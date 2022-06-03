@@ -410,7 +410,8 @@ def main():
                 obsdb = kcc.ObservationDatabase(parsed.max_delta_approxsync)
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["originalprojection","individualprojections"])
+                    obsdb.getAllObsCam(cam_id)
+                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["targetpointcloud"])
                     for obs in new_obs:
                         obsdb.addObservation(cam_id,obs)
                     obslist[cam_id] = new_obs

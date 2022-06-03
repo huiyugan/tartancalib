@@ -225,24 +225,26 @@ bool GridCalibrationTargetAprilgrid::computeObservation(
     //image with refined (blue) and raw corners (red)
     cv::Mat imageCopy1 = image.clone();
     cv::cvtColor(imageCopy1, imageCopy1, cv::COLOR_GRAY2RGB);
-    for (unsigned i = 0; i < detections.size(); i++)
+    for (unsigned i = 0; i < detections.size(); i++){
+      detections[i].draw(imageCopy1);
       for (unsigned j = 0; j < 4; j++) {
         //raw apriltag corners
         //cv::circle(imageCopy1, cv::Point2f(detections[i].p[j].first, detections[i].p[j].second), 2, CV_RGB(255,0,0), 1);
 
         //subpixel refined corners
+        
         cv::circle(
             imageCopy1,
             cv::Point2f(tagCorners.at<float>(4 * i + j, 0),
                         tagCorners.at<float>(4 * i + j, 1)),
-            3, CV_RGB(0,0,255), 1);
+            5, CV_RGB(0,255,0), 2);
 
         if (!success)
           cv::putText(imageCopy1, "Detection failed! (frame not used)",
                       cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.8,
                       CV_RGB(255,0,0), 3, 8, false);
       }
-
+    }
     cv::imshow("Aprilgrid: Tag corners", imageCopy1);  // OpenCV call
     cv::waitKey(1);
 

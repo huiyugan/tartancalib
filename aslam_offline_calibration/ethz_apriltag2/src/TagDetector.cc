@@ -24,7 +24,7 @@
 
 #include "apriltags/TagDetector.h"
 
-//#define DEBUG_APRIL
+#define DEBUG_APRIL_QUADS
 
 #ifdef DEBUG_APRIL
 #include <opencv/cv.h>
@@ -250,8 +250,8 @@ namespace AprilTags {
      
       map<int, vector<XYWeight> >::iterator it = clusters.find(rep);
       if ( it == clusters.end() ) {
-	clusters[rep] = vector<XYWeight>();
-	it = clusters.find(rep);
+        clusters[rep] = vector<XYWeight>();
+        it = clusters.find(rep);
       }
       vector<XYWeight> &points = it->second;
       points.push_back(XYWeight(x,y,fimMag.get(x,y)));
@@ -396,31 +396,7 @@ namespace AprilTags {
     Quad::search(fimOrig, tmp, segments[i], 0, quads, opticalCenter);
   }
 
-#ifdef DEBUG_APRIL
-  {
-    for (unsigned int qi = 0; qi < quads.size(); qi++ ) {
-      Quad &quad = quads[qi];
-      std::pair<float, float> p1 = quad.quadPoints[0];
-      std::pair<float, float> p2 = quad.quadPoints[1];
-      std::pair<float, float> p3 = quad.quadPoints[2];
-      std::pair<float, float> p4 = quad.quadPoints[3];
-      cv::line(image, cv::Point2f(p1.first, p1.second), cv::Point2f(p2.first, p2.second), cv::Scalar(0,0,255,0) );
-      cv::line(image, cv::Point2f(p2.first, p2.second), cv::Point2f(p3.first, p3.second), cv::Scalar(0,0,255,0) );
-      cv::line(image, cv::Point2f(p3.first, p3.second), cv::Point2f(p4.first, p4.second), cv::Scalar(0,0,255,0) );
-      cv::line(image, cv::Point2f(p4.first, p4.second), cv::Point2f(p1.first, p1.second), cv::Scalar(0,0,255,0) );
 
-      p1 = quad.interpolate(-1,-1);
-      p2 = quad.interpolate(-1,1);
-      p3 = quad.interpolate(1,1);
-      p4 = quad.interpolate(1,-1);
-      cv::circle(image, cv::Point2f(p1.first, p1.second), 3, cv::Scalar(0,255,0,0), 1);
-      cv::circle(image, cv::Point2f(p2.first, p2.second), 3, cv::Scalar(0,255,0,0), 1);
-      cv::circle(image, cv::Point2f(p3.first, p3.second), 3, cv::Scalar(0,255,0,0), 1);
-      cv::circle(image, cv::Point2f(p4.first, p4.second), 3, cv::Scalar(0,255,0,0), 1);
-    }
-    cv::imshow("debug_april", image);
-  }
-#endif
 
   //================================================================
   // Step eight. Decode the quads. For each quad, we first estimate a
@@ -576,6 +552,44 @@ namespace AprilTags {
        goodDetections.push_back(thisTagDetection);
 
   }
+
+// this shows the quads detected, and which quads were eventually passed as good tag detections
+#ifdef DEBUG_APRIL_QUADS
+  {
+    cv::Mat image_quad;
+    cv::cvtColor(image, image_quad, cv::COLOR_GRAY2BGR);
+    for (auto detection: goodDetections)
+    {
+      detection.draw(image_quad);
+    }
+
+    for (unsigned int qi = 0; qi < quads.size(); qi++ ) {
+      Quad &quad = quads[qi];
+      std::pair<float, float> p1 = quad.quadPoints[0];
+      std::pair<float, float> p2 = quad.quadPoints[1];
+      std::pair<float, float> p3 = quad.quadPoints[2];
+      std::pair<float, float> p4 = quad.quadPoints[3];
+      cv::line(image_quad, cv::Point2f(p1.first, p1.second), cv::Point2f(p2.first, p2.second), cv::Scalar(0,255,0) );
+      cv::line(image_quad, cv::Point2f(p2.first, p2.second), cv::Point2f(p3.first, p3.second), cv::Scalar(0,255,0) );
+      cv::line(image_quad, cv::Point2f(p3.first, p3.second), cv::Point2f(p4.first, p4.second), cv::Scalar(0,255,0) );
+      cv::line(image_quad, cv::Point2f(p4.first, p4.second), cv::Point2f(p1.first, p1.second), cv::Scalar(0,255,0) );
+
+      p1 = quad.interpolate(-1,-1);
+      p2 = quad.interpolate(-1,1);
+      p3 = quad.interpolate(1,1);
+      p4 = quad.interpolate(1,-1);
+      cv::circle(image_quad, cv::Point2f(p1.first, p1.second), 3, cv::Scalar(0,255,0), 1);
+      cv::circle(image_quad, cv::Point2f(p2.first, p2.second), 3, cv::Scalar(0,255,0), 1);
+      cv::circle(image_quad, cv::Point2f(p3.first, p3.second), 3, cv::Scalar(0,255,0), 1);
+      cv::circle(image_quad, cv::Point2f(p4.first, p4.second), 3, cv::Scalar(0,255,0), 1);
+    }
+    // saving the image as  
+    const std::time_t now = std::time(nullptr) ; // get the current time point
+    const std::tm calendar_time = *std::localtime( std::addressof(now) ) ;
+    cv::imwrite("debug_april"+std::to_string(calendar_time.tm_hour)+"_"+std::to_string(calendar_time.tm_min)+"_"+std::to_string(calendar_time.tm_sec)+".png", image_quad);
+  }
+#endif
+
 
   //cout << "AprilTags: edges=" << nEdges << " clusters=" << clusters.size() << " segments=" << segments.size()
   //     << " quads=" << quads.size() << " detections=" << detections.size() << " unique tags=" << goodDetections.size() << endl;

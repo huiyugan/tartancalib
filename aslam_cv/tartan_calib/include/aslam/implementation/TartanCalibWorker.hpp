@@ -185,12 +185,43 @@ namespace aslam
                         myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
                         for (int i=0; i<num_frames_;i++)
                         {
+                            sm::kinematics::Transformation out_T_t_c;
+                            camera_->estimateTransformation(obslist_[i],out_T_t_c);
+                            Eigen::Matrix4d T = out_T_t_c.T();
+
                             std::vector<cv::Point3f> pts3d;
                             std::vector<cv::Point2f> outCornerList;
+                            cv::Point2f distorted_pixel_cv;
                             Eigen::Vector3d outPoint;
-                            Eigen::VectorXd keypoint(2);
-                            
+                            Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
+
                             obslist_[i].getCornersTargetFrame(pts3d);
+
+                            cv::Mat img_gray = obslist_[i].image();
+                            cv::Mat img_color;
+                            cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR); //convert to color to be able to plot colored dots
+
+                            for (auto &pt3d: pts3d)
+                            {
+                                target_original(0) = pt3d.x;
+                                target_original(1) = pt3d.y;
+                                target_original(2) = pt3d.z;
+                                target_original(3) = 1.0;
+
+                                target_transformed = T.inverse()*target_original;
+                                camera_->vsEuclideanToKeypoint(target_transformed.cast<double>(),distorted_pixel_location_);
+                                distorted_pixel_cv.x = distorted_pixel_location_(0);
+                                distorted_pixel_cv.y = distorted_pixel_location_(1);
+
+                                cv::circle(img_color, distorted_pixel_cv,5, cv::Scalar(0,255,0),2);
+                                pt3d.x = target_transformed(0);
+                                pt3d.y = target_transformed(1);
+                                pt3d.z = target_transformed(2);
+
+                            }
+
+
+         
                             // for (auto corner: outCornerList)
                             // {
                             //     keypoint(0) = corner.x;
@@ -201,6 +232,9 @@ namespace aslam
                             cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
                             myWindow.showWidget("cloud 1", cloud_widget1);
                             myWindow.spin();
+
+                            cv::imshow("3D target points reprojected into camera",img_color);
+                            cv::waitKey(5000);
                         }        
                         break;   
                     }

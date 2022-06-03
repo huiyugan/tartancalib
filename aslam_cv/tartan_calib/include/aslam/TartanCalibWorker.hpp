@@ -25,6 +25,8 @@
 #include <aslam/matplotlibcpp.h>
 #include <ctime>
 #include <fstream>
+#include <sm/kinematics/Transformation.hpp>
+
 
 namespace aslam
 {
@@ -108,8 +110,16 @@ namespace aslam
 
               for (auto obs: obslist_)
               {
+
                 obs.getCornersIdx(outCornerIdx_);
                 num_corners_start+=outCornerIdx_.size();
+                // sm::kinematics::Transformation out_T_t_c;
+                // camera_->estimateTransformation(obs,out_T_t_c);
+                // //DEBUG:
+                // SM_INFO_STREAM("Transformation matrix T "<<out_T_t_c.T());
+                // SM_INFO_STREAM("Transformation matrix C "<<out_T_t_c.C());
+                // SM_INFO_STREAM("Transformation matrix t "<<out_T_t_c.t());
+                // SM_INFO_STREAM("Transformation matrix q "<<out_T_t_c.q());
               }
               SM_INFO_STREAM("Started tartan calib with "<<num_corners_start<<" points.");
             
