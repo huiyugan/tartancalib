@@ -21,6 +21,7 @@ public:
 	TagDetector(const TagCodes& tagCodes, const size_t blackBorder=2) : thisTagFamily(tagCodes, blackBorder) {}
 	
 	std::vector<TagDetection> extractTags(const cv::Mat& image);
+	Eigen::MatrixXd extractQuads(const cv::Mat& image);
 	
 };
 

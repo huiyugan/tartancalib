@@ -1,6 +1,5 @@
 #ifndef ASLAM_TARTAN_CALIB
 #define ASLAM_TARTAN_CALIB
-#define CVPLOT_HEADER_ONLY
 #include <Eigen/Dense>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/serialization/export.hpp>
@@ -26,7 +25,7 @@
 #include <ctime>
 #include <fstream>
 #include <sm/kinematics/Transformation.hpp>
-
+#include "apriltags/TagDetector.h"
 
 namespace aslam
 {
@@ -48,6 +47,7 @@ namespace aslam
       {
         pinhole,
         homography,
+        cornerpredictor,
         none
       };
 
@@ -148,6 +148,7 @@ namespace aslam
               {
                 case ReprojectionMode::pinhole: return "pinhole";
                 case ReprojectionMode::homography: return "homography";
+                case ReprojectionMode::cornerpredictor: return "cornerpredictor";
                 case ReprojectionMode::none: return "none";
               }
             }
@@ -156,6 +157,7 @@ namespace aslam
               std::map<std::string, ReprojectionMode> reprojection_mode = boost::assign::map_list_of
               ("pinhole",ReprojectionMode::pinhole)
               ("homography",ReprojectionMode::homography)
+              ("cornerpredictor",ReprojectionMode::cornerpredictor)
               ("none",ReprojectionMode::none);
               return reprojection_mode[e];
             }
