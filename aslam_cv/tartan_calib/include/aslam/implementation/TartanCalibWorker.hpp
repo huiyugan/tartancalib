@@ -187,54 +187,41 @@ namespace aslam
                         {
                             sm::kinematics::Transformation out_T_t_c;
                             camera_->estimateTransformation(obslist_[i],out_T_t_c);
-                            Eigen::Matrix4d T = out_T_t_c.T();
+                            Eigen::Matrix4d T = out_T_t_c.T().inverse();
 
                             std::vector<cv::Point3f> pts3d;
                             std::vector<cv::Point2f> outCornerList;
                             cv::Point2f distorted_pixel_cv;
                             Eigen::Vector3d outPoint;
                             Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
+                            Eigen::MatrixXd all_target_original,all_target_transformed;
 
-                            obslist_[i].getCornersTargetFrame(pts3d);
+                            // obslist_[i].getCornersTargetFrame(pts3d);
 
                             cv::Mat img_gray = obslist_[i].image();
                             cv::Mat img_color;
                             cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR); //convert to color to be able to plot colored dots
+                            all_target_original = target_->points().transpose();
+                            all_target_original.conservativeResize(4,all_target_original.cols());
+                            all_target_original.row(all_target_original.rows()-1) = Eigen::Matrix<double, 1,Eigen::Dynamic>::Ones(1,all_target_original.cols());
+                            all_target_transformed = T*all_target_original;
 
-                            for (auto &pt3d: pts3d)
+                            for (int j = 0; j<all_target_original.cols();j++)
                             {
-                                target_original(0) = pt3d.x;
-                                target_original(1) = pt3d.y;
-                                target_original(2) = pt3d.z;
-                                target_original(3) = 1.0;
-
-                                target_transformed = T.inverse()*target_original;
-                                camera_->vsEuclideanToKeypoint(target_transformed.cast<double>(),distorted_pixel_location_);
+                                camera_->vsEuclideanToKeypoint(all_target_transformed.col(j).cast<double>(),distorted_pixel_location_);
                                 distorted_pixel_cv.x = distorted_pixel_location_(0);
                                 distorted_pixel_cv.y = distorted_pixel_location_(1);
 
-                                cv::circle(img_color, distorted_pixel_cv,5, cv::Scalar(0,255,0),2);
-                                pt3d.x = target_transformed(0);
-                                pt3d.y = target_transformed(1);
-                                pt3d.z = target_transformed(2);
-
+                                cv::circle(img_color, distorted_pixel_cv,5, cv::Scalar(0,255,0),2);           
+                                pts3d.push_back(cv::Point3f(all_target_transformed.coeff(0,j),all_target_transformed.coeff(1,j),all_target_transformed.coeff(2,j)));
                             }
 
-
-         
-                            // for (auto corner: outCornerList)
-                            // {
-                            //     keypoint(0) = corner.x;
-                            //     keypoint(1) = corner.y;
-                            //     camera_->vsKeypointToEuclidean(keypoint,outPoint);
-                            //     pts3d.push_back(cv::Point3f(outPoint(0),outPoint(1),outPoint(2)));
-                            // }
                             cv::viz::WCloud cloud_widget1(pts3d,cv::viz::Color::green());
                             myWindow.showWidget("cloud 1", cloud_widget1);
                             myWindow.spin();
 
                             cv::imshow("3D target points reprojected into camera",img_color);
-                            cv::waitKey(5000);
+                            cv::waitKey(2000);
                         }        
                         break;   
                     }

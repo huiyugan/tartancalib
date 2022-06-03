@@ -84,6 +84,7 @@ namespace aslam
             TartanCalibWorker(const C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
             : obslist_(obslist),
             gd_(gd),
+            target_(gd.target()),
             camera_(camera),
             fovs_(fovs),
             poses_(poses),
@@ -248,6 +249,7 @@ namespace aslam
             aslam::cameras::GridDetector gd_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> output_obslist_;
             std::string log_file = "log.txt";
+            GridCalibrationTargetBase::Ptr target_;
             
 
     };
