@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 find_package(Boost REQUIRED COMPONENTS serialization) 
 find_package(catkin REQUIRED COMPONENTS
+  ethz_apriltag2  
   tartan_calib
   sm_common
   sm_eigen

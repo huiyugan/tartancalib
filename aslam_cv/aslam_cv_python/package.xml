@@ -19,6 +19,7 @@
     <build_depend>aslam_imgproc</build_depend>
     <build_depend>aslam_cameras</build_depend>
     <build_depend>aslam_time</build_depend>
+    <build_depend>  ethz_apriltag2</build_depend>
     <build_depend>tartan_calib</build_depend>
     <build_depend>aslam_cv_serialization</build_depend>
 </package>

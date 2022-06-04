@@ -21,12 +21,12 @@ find_package(catkin REQUIRED COMPONENTS
   aslam_cameras
   sm_property_tree
   aslam_time
+  ethz_apriltag2
 )
 
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
 )
 
 add_definitions(-fPIC -Wextra -Winit-self -Woverloaded-virtual -Wnon-virtual-dtor -Wsign-promo -Wno-long-long -Wl,--no-allow-shlib-undefined)
@@ -37,5 +37,8 @@ if(NOT APPLE)
 endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS})
+
+add_library(tartan_calib INTERFACE)
+
 
 
