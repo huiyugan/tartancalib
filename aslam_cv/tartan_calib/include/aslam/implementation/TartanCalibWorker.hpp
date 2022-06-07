@@ -6,6 +6,30 @@ namespace aslam
     {
 
         template< typename C>
+        void TartanCalibWorker<C>::match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection)
+        {  
+            for (int j=0; j<num_frames_; j++)
+            {
+                Eigen::MatrixXd quads = tagDetector_->extractQuads(reprojection.obslist_[j].image());
+                
+                cv::Mat img_gray = reprojection.obslist_[j].image();
+                cv::Mat img_color;
+                cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR);
+                cv::Point2f pixel;
+                for (int i=0; i< quads.cols(); i++)
+                {
+                    pixel.x = quads.coeff(0,i);
+                    pixel.y = quads.coeff(1,i);
+
+                    cv::circle(img_color, pixel,5, cv::Scalar(0,255,0),2);      
+                }
+                cv::imshow("test",img_color);
+                cv::waitKey(5000);
+            }
+
+        }
+
+        template< typename C>
         void TartanCalibWorker<C>::homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection)
         {  
             reprojection.homography_.clear();
@@ -402,11 +426,13 @@ namespace aslam
                 
                 for (auto &reprojection: reprojection_wrappers_ )
                 {
-                    obs_.setImage(reprojection.obslist_[i].image());
-                    gd_.findTargetNoTransformation(reprojection.obslist_[i].image(),obs_);
-                    obs_.setTime(obslist_[i].time());
-                    obs_.getCornersIdx(outCornerIdx_);
-                    reprojection.obslist_[i] = obs_;
+                    if (reprojection.reproj_type_ == ReprojectionMode::homography || reprojection.reproj_type_ == ReprojectionMode::pinhole || reprojection.reproj_type_ ==  ReprojectionMode::cornerpredictor )
+                    {
+                        obs_.setImage(reprojection.obslist_[i].image());
+                        gd_.findTargetNoTransformation(reprojection.obslist_[i].image(),obs_);
+                        obs_.setTime(obslist_[i].time());
+                        reprojection.obslist_[i] = obs_;                        
+                    }
                 }
             }
             
@@ -417,6 +443,10 @@ namespace aslam
                 if(reprojection.reproj_type_ == ReprojectionMode::homography)
                 {
                     homography_reprojection(reprojection);
+                }
+                else if (reprojection.reproj_type_ == ReprojectionMode::cornerpredictor)
+                {
+                    match_quads(reprojection);
                 }
             }
         }
@@ -444,7 +474,6 @@ namespace aslam
                 ///TODO:Remove
                 reprojections_.push_back(frame_reprojections);
             }
-  
         }
 
         template< typename C>
@@ -484,7 +513,10 @@ namespace aslam
         {
             for (auto &reprojection: reprojection_wrappers_ )
             {
-                compute_remap(reprojection);
+                if (reprojection.reproj_type_ == ReprojectionMode::pinhole || reprojection.reproj_type_ == ReprojectionMode::homography)
+                {
+                    compute_remap(reprojection);
+                }
             }
         }
               

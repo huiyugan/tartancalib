@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   sm_property_tree
   aslam_time
   ethz_apriltag2
+  aslam_cameras_april
 )
 
 

@@ -22,4 +22,5 @@
     <build_depend>  ethz_apriltag2</build_depend>
     <build_depend>tartan_calib</build_depend>
     <build_depend>aslam_cv_serialization</build_depend>
+    <build_depend>aslam_cameras_april</build_depend>
 </package>

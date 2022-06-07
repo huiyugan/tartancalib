@@ -92,6 +92,8 @@ class GridCalibrationTargetAprilgrid : public GridCalibrationTargetBase {
                           Eigen::MatrixXd & outImagePoints,
                           std::vector<bool> &outCornerObserved) const;
 
+  AprilgridOptions options(){return _options;}
+
  private:
   /// \brief initialize the object
   void initialize();

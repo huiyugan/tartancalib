@@ -24,7 +24,7 @@
 
 #include "apriltags/TagDetector.h"
 
-// #define DEBUG_APRIL_QUADS
+#define DEBUG_APRIL_QUADS
 
 #ifdef DEBUG_APRIL
 #include <opencv/cv.h>
@@ -958,27 +958,137 @@ namespace AprilTags {
     Quad::search(fimOrig, tmp, segments[i], 0, quads, opticalCenter);
   }
 
+
+  //================================================================
+  // Step eight. Decode the quads. For each quad, we first estimate a
+  // threshold color to decide between 0 and 1. Then, we read off the
+  // bits and see if they make sense.
+
+  std::vector<TagDetection> detections;
+
+  for (unsigned int qi = 0; qi < quads.size(); qi++ ) {
+    Quad &quad = quads[qi];
+
+    // Find a threshold
+    GrayModel blackModel, whiteModel;
+    const int dd = 2 * thisTagFamily.blackBorder + thisTagFamily.dimension;
+
+    for (int iy = -1; iy <= dd; iy++) {
+      float y = (iy + 0.5f) / dd;
+      for (int ix = -1; ix <= dd; ix++) {
+	float x = (ix + 0.5f) / dd;
+	std::pair<float,float> pxy = quad.interpolate01(x, y);
+	int irx = (int) (pxy.first + 0.5);
+	int iry = (int) (pxy.second + 0.5);
+	if (irx < 0 || irx >= width || iry < 0 || iry >= height)
+	  continue;
+	float v = fim.get(irx, iry);
+	if (iy == -1 || iy == dd || ix == -1 || ix == dd)
+	  whiteModel.addObservation(x, y, v);
+	else if (iy == 0 || iy == (dd-1) || ix == 0 || ix == (dd-1))
+	  blackModel.addObservation(x, y, v);
+      }
+    }
+
+    bool bad = false;
+    unsigned long long tagCode = 0;
+    for ( int iy = thisTagFamily.dimension-1; iy >= 0; iy-- ) {
+      float y = (thisTagFamily.blackBorder + iy + 0.5f) / dd;
+      for (int ix = 0; ix < thisTagFamily.dimension; ix++ ) {
+	float x = (thisTagFamily.blackBorder + ix + 0.5f) / dd;
+	std::pair<float,float> pxy = quad.interpolate01(x, y);
+	int irx = (int) (pxy.first + 0.5);
+	int iry = (int) (pxy.second + 0.5);
+	if (irx < 0 || irx >= width || iry < 0 || iry >= height) {
+	  // cout << "*** bad:  irx=" << irx << "  iry=" << iry << endl;
+	  bad = true;
+	  continue;
+	}
+	float threshold = (blackModel.interpolate(x,y) + whiteModel.interpolate(x,y)) * 0.5f;
+	float v = fim.get(irx, iry);
+	tagCode = tagCode << 1;
+	if ( v > threshold)
+	  tagCode |= 1;
+#ifdef DEBUG_APRIL
+        {
+          if (v>threshold)
+            cv::circle(image, cv::Point2f(irx, iry), 1, cv::Scalar(0,0,255,0), 2);
+          else
+            cv::circle(image, cv::Point2f(irx, iry), 1, cv::Scalar(0,255,0,0), 2);
+        }
+#endif
+      }
+    }
+
+    if ( !bad ) {
+      TagDetection thisTagDetection;
+      thisTagFamily.decode(thisTagDetection, tagCode);
+
+      // compute the homography (and rotate it appropriately)
+      thisTagDetection.homography = quad.homography.getH();
+      thisTagDetection.hxy = quad.homography.getCXY();
+
+      float c = std::cos(thisTagDetection.rotation*(float)M_PI/2);
+      float s = std::sin(thisTagDetection.rotation*(float)M_PI/2);
+      Eigen::Matrix3d R;
+      R.setZero();
+      R(0,0) = R(1,1) = c;
+      R(0,1) = -s;
+      R(1,0) = s;
+      R(2,2) = 1;
+      Eigen::Matrix3d tmp;
+      tmp = thisTagDetection.homography * R;
+      thisTagDetection.homography = tmp;
+
+      // Rotate points in detection according to decoded
+      // orientation.  Thus the order of the points in the
+      // detection object can be used to determine the
+      // orientation of the target.
+      std::pair<float,float> bottomLeft = thisTagDetection.interpolate(-1,-1);
+      int bestRot = -1;
+      float bestDist = FLT_MAX;
+      for ( int i=0; i<4; i++ ) {
+	float const dist = AprilTags::MathUtil::distance2D(bottomLeft, quad.quadPoints[i]);
+	if ( dist < bestDist ) {
+	  bestDist = dist;
+	  bestRot = i;
+	}
+      }
+
+      for (int i=0; i< 4; i++)
+	thisTagDetection.p[i] = quad.quadPoints[(i+bestRot) % 4];
+
+      if (thisTagDetection.good) {
+	thisTagDetection.cxy = quad.interpolate01(0.5f, 0.5f);
+	thisTagDetection.observedPerimeter = quad.observedPerimeter;
+	detections.push_back(thisTagDetection);
+      }
+    }
+  }
+  
   Eigen::MatrixXd eigen_quads(2,quads.size()*4);
-  for (unsigned int i=0; i<quads.size(); i++)
-  {
-      Quad &quad = quads[i];
+  std::pair<float,float> p1, p2, p3, p4;
+
+
+  for (unsigned int qi = 0; qi < quads.size(); qi++ ) {
+      Quad &quad = quads[qi];
       
-      std::pair<float, float> p1 = quad.quadPoints[0];
-      std::pair<float, float> p2 = quad.quadPoints[1];
-      std::pair<float, float> p3 = quad.quadPoints[2];
-      std::pair<float, float> p4 = quad.quadPoints[3];
+      p1 = quad.interpolate(-1,-1);
+      p2 = quad.interpolate(-1,1);
+      p3 = quad.interpolate(1,1);
+      p4 = quad.interpolate(1,-1);
 
-      eigen_quads(0,i) = p1.first;
-      eigen_quads(1,i) = p1.second;
+      eigen_quads(0,qi*4) = p1.first;
+      eigen_quads(1,qi*4) = p1.second;
 
-      eigen_quads(0,i+1) = p2.first;
-      eigen_quads(1,i+1) = p2.second;
+      eigen_quads(0,qi*4+1) = p2.first;
+      eigen_quads(1,qi*4+1) = p2.second;
 
-      eigen_quads(0,i+2) = p3.first;
-      eigen_quads(1,i+2) = p3.second;
+      eigen_quads(0,qi*4+2) = p3.first;
+      eigen_quads(1,qi*4+2) = p3.second;
 
-      eigen_quads(0,i+3) = p4.first;
-      eigen_quads(1,i+3) = p4.second;
+      eigen_quads(0,qi*4+3) = p4.first;
+      eigen_quads(1,qi*4+3) = p4.second;
   }
 
   return eigen_quads;

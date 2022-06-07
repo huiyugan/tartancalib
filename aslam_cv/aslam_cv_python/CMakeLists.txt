@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   aslam_cameras
   aslam_time
   aslam_cv_serialization
+  aslam_cameras_april
 )
 
 catkin_package(

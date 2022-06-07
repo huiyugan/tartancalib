@@ -4,6 +4,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/serialization/export.hpp>
 #include <aslam/cameras/GridCalibrationTargetObservation.hpp>
+#include <aslam/cameras/GridCalibrationTargetAprilgrid.hpp>
 #include <vector>
 #include <utility>
 #include <Eigen/Core>
@@ -26,6 +27,7 @@
 #include <fstream>
 #include <sm/kinematics/Transformation.hpp>
 #include "apriltags/TagDetector.h"
+#include "apriltags/Tag36h11.h"
 
 namespace aslam
 {
@@ -85,6 +87,8 @@ namespace aslam
             : obslist_(obslist),
             gd_(gd),
             target_(gd.target()),
+            target_april_(boost::dynamic_pointer_cast<GridCalibrationTargetAprilgrid>(target_)),
+            tagDetector_(boost::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes36h11, target_april_->options().blackTagBorder)),
             camera_(camera),
             fovs_(fovs),
             poses_(poses),
@@ -111,16 +115,8 @@ namespace aslam
 
               for (auto obs: obslist_)
               {
-
                 obs.getCornersIdx(outCornerIdx_);
                 num_corners_start+=outCornerIdx_.size();
-                // sm::kinematics::Transformation out_T_t_c;
-                // camera_->estimateTransformation(obs,out_T_t_c);
-                // //DEBUG:
-                // SM_INFO_STREAM("Transformation matrix T "<<out_T_t_c.T());
-                // SM_INFO_STREAM("Transformation matrix C "<<out_T_t_c.C());
-                // SM_INFO_STREAM("Transformation matrix t "<<out_T_t_c.t());
-                // SM_INFO_STREAM("Transformation matrix q "<<out_T_t_c.q());
               }
               SM_INFO_STREAM("Started tartan calib with "<<num_corners_start<<" points.");
             
@@ -139,6 +135,7 @@ namespace aslam
             void debug_show(void);
             std::vector<aslam::cameras::GridCalibrationTargetObservation> getNewObs(void);
             void homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection );
+            void match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection);
 
             
            
@@ -252,7 +249,8 @@ namespace aslam
             std::vector<aslam::cameras::GridCalibrationTargetObservation> output_obslist_;
             std::string log_file = "log.txt";
             GridCalibrationTargetBase::Ptr target_;
-            
+            GridCalibrationTargetAprilgrid::Ptr target_april_;
+            boost::shared_ptr<AprilTags::TagDetector> tagDetector_;
 
     };
     }
