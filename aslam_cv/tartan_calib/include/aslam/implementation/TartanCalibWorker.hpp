@@ -10,23 +10,62 @@ namespace aslam
         {  
             for (int j=0; j<num_frames_; j++)
             {
+                //check the already found corners 
+                new_obslist_[j].getCornersIdx(outCornerIdx_);
+
+                // retrieve quad points from image
                 Eigen::MatrixXd quads = tagDetector_->extractQuads(reprojection.obslist_[j].image());
-                
-                cv::Mat img_gray = reprojection.obslist_[j].image();
-                cv::Mat img_color;
-                cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR);
+
+                // retrieve predicted 
+                sm::kinematics::Transformation out_T_t_c;
+                camera_->estimateTransformation(reprojection.obslist_[j],out_T_t_c);
+                Eigen::Matrix4d T = out_T_t_c.T().inverse();
+
+                cv::Point2f distorted_pixel_cv;
+                Eigen::Vector3d outPoint;
+                Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
+                Eigen::MatrixXd all_target_original,all_target_transformed;
+
+                all_target_original = target_->points().transpose();
+                all_target_original.conservativeResize(4,all_target_original.cols());
+                all_target_original.row(all_target_original.rows()-1) = Eigen::Matrix<double, 1,Eigen::Dynamic>::Ones(1,all_target_original.cols());
+                all_target_transformed = T*all_target_original;
+
+
+                int num_target_corners = all_target_transformed.cols();
+
                 cv::Point2f pixel;
-                for (int i=0; i< quads.cols(); i++)
+                Eigen::MatrixXd target_image_frame(2,num_target_corners);
+                for (int i=0; i< num_target_corners; i++)
                 {
-                    pixel.x = quads.coeff(0,i);
-                    pixel.y = quads.coeff(1,i);
-
-                    cv::circle(img_color, pixel,5, cv::Scalar(0,255,0),2);      
+                    camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
+                    target_image_frame.col(i) = distorted_pixel_location_;
                 }
-                cv::imshow("test",img_color);
-                cv::waitKey(5000);
-            }
+             
 
+                Eigen::Index index;
+                Eigen::VectorXd norms;
+                for (int k=0; k< num_target_corners; k++)
+                {
+                    norms = (quads.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
+                    norms.minCoeff(&index);
+
+                    /// TODO: Make threshold tunable
+                    /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
+                    if (norms(index) < 1.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
+                    {
+                        new_obslist_[j].updateImagePoint(k,quads.col(index));
+                    }
+
+                    // SM_INFO_STREAM("NORM: "<<norms<<"\n");
+                }
+                reprojection.obslist_[j] = new_obslist_[j];
+                
+                std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
+                
+                aslam::Time stamp = obslist_[j].time();
+                // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",get_mat(obslist,false,0,std::vector<cv::Scalar>({cv::Scalar(0,255,0)}),2));
+            }
         }
 
         template< typename C>
@@ -416,6 +455,13 @@ namespace aslam
                     }
                 }
             }
+            for (auto &reprojection: reprojection_wrappers_ )
+            {
+                if (reprojection.reproj_type_ == ReprojectionMode::cornerpredictor)
+                {
+                    match_quads(reprojection);
+                }
+            }
         }
 
         template< typename C>
@@ -443,10 +489,6 @@ namespace aslam
                 if(reprojection.reproj_type_ == ReprojectionMode::homography)
                 {
                     homography_reprojection(reprojection);
-                }
-                else if (reprojection.reproj_type_ == ReprojectionMode::cornerpredictor)
-                {
-                    match_quads(reprojection);
                 }
             }
         }

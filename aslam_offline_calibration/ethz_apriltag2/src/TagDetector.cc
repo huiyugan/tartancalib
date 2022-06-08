@@ -24,7 +24,7 @@
 
 #include "apriltags/TagDetector.h"
 
-#define DEBUG_APRIL_QUADS
+// #define DEBUG_APRIL_QUADS
 
 #ifdef DEBUG_APRIL
 #include <opencv/cv.h>

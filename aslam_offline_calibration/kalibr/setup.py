@@ -8,7 +8,9 @@ setup_args = generate_distutils_setup(
     packages=['kalibr_errorterms',
               'kalibr_common',
               'kalibr_camera_calibration',
-              'kalibr_imu_camera_calibration'],
+              'kalibr_imu_camera_calibration',
+              'tartan_logging'
+              ],
     package_dir={'':'python'}
 )
 

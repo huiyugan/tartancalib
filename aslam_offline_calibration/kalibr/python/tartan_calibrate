@@ -20,6 +20,8 @@ import argparse
 import sys
 import random
 import signal
+from tartan_logging import TartanLogging
+import dill
 
 np.set_printoptions(suppress=True)
 
@@ -30,6 +32,9 @@ resolutions = np.array([[1000,1000,1000,1000,1000,1000,1000],[1000,1000,1000,100
 projections = ["pinhole","pinhole","pinhole","pinhole","pinhole","homography","cornerpredictor"]
 num_corners = np.array([])
 log_file = 'log.txt'
+
+# list of tartanlogging classes, these will be saved to a pickle for analysis at a later time
+tartanlogs = []
 
 def initBagDataset(bagfile, topic, from_to):
     print("\tDataset:          {0}".format(bagfile))
@@ -221,7 +226,9 @@ def main():
     initOutlierRejection=True
     removedOutlierCorners=list() 
 
-    num_iterations = 10
+
+
+    num_iterations = 7
     for iteration in range(num_iterations):
         while True:
             try:
@@ -247,6 +254,10 @@ def main():
 
                 print("initializing calibrator")
                 calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman)
+                # adding the initial observation database to the logs
+                if (iteration==0):
+                    tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
+
                 options = calibrator.estimator.getOptions()
                 options.infoGainDelta = parsed.miTol
                 options.checkValidity = True
@@ -408,6 +419,9 @@ def main():
                 print("Calibration complete.")
 
                 obsdb = kcc.ObservationDatabase(parsed.max_delta_approxsync)
+                
+
+
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
                     obsdb.getAllObsCam(cam_id)
@@ -416,7 +430,11 @@ def main():
                         obsdb.addObservation(cam_id,obs)
                     obslist[cam_id] = new_obs
 
-                
+                tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
+                #saving the logs
+                with open('log_big.pkl', 'w') as f:
+                    dill.dump(tartanlogs, f)
+
                 #initialize the calibration graph
                 graph = kcc.MulticamCalibrationGraph(obsdb)
 
@@ -473,7 +491,9 @@ def main():
                 break #normal exit
 
     kcc.generateReport(calibrator, reportFile, showOnScreen=not parsed.dontShowReport, graph=G, removedOutlierCorners=removedOutlierCorners);
+    
 
+        
 if __name__ == "__main__":
     main()
 #     try:
