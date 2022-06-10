@@ -10,6 +10,11 @@ namespace aslam
         {  
             for (int j=0; j<num_frames_; j++)
             {
+                
+                cv::Mat img_gray = reprojection.obslist_[j].image();
+                cv::Mat img_color;
+                cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR); //convert to color to be able to plot colored dots
+
                 //check the already found corners 
                 new_obslist_[j].getCornersIdx(outCornerIdx_);
 
@@ -36,26 +41,67 @@ namespace aslam
 
                 cv::Point2f pixel;
                 Eigen::MatrixXd target_image_frame(2,num_target_corners);
+                Eigen::MatrixXd target_image_frame_stripped(2,num_target_corners);
+                cv::Mat tagCorners(1, 2, CV_32F);
+
                 for (int i=0; i< num_target_corners; i++)
                 {
                     camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
                     target_image_frame.col(i) = distorted_pixel_location_;
                 }
              
-
-                Eigen::Index index;
-                Eigen::VectorXd norms;
+                Eigen::Index index_reprojection, index_target;
+                Eigen::VectorXd norms_reprojection, norms_target;
                 for (int k=0; k< num_target_corners; k++)
                 {
-                    norms = (quads.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
-                    norms.minCoeff(&index);
+                    target_image_frame_stripped = target_image_frame;
+                    // find distance to closest quad detected
+                    norms_reprojection = (quads.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
+                    norms_reprojection.minCoeff(&index_reprojection);
+
 
                     /// TODO: Make threshold tunable
                     /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
-                    if (norms(index) < 1.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
+                    if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
                     {
-                        new_obslist_[j].updateImagePoint(k,quads.col(index));
+                        // find distance to closest other corner detected
+                        if (k< num_target_corners -1)
+                        {
+                            target_image_frame_stripped.block(0,k,2,num_target_corners-k) = target_image_frame_stripped.block(0,k+1,2,num_target_corners-k);
+                        }
+
+                        target_image_frame_stripped.conservativeResize(2,num_target_corners-1);
+
+
+                        norms_target = (target_image_frame_stripped.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
+                        norms_target.minCoeff(&index_target);
+
+                        int refine_window_size = static_cast<int>(norms_target(index_target)/50.0);
+                        if (refine_window_size <1)
+                        {
+                            refine_window_size = 1;
+                        }
+                        else if (refine_window_size > 7)
+                        {
+                            refine_window_size = 7;
+                        }
+                        
+                        SM_INFO_STREAM("Original:"<<norms_target(index_target));
+                        SM_INFO_STREAM("Window: "<<refine_window_size);
+
+                        //subpixel refinement
+                        tagCorners.at<float>(0,0) = quads.coeff(0,index_reprojection);
+                        tagCorners.at<float>(0,1) = quads.coeff(1,index_reprojection);
+                        cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);           
+                        cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
+                        cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
+
+                        quads(0,index_reprojection) = tagCorners.at<float>(0,0);
+                        quads(1,index_reprojection) = tagCorners.at<float>(0,1);
+
+                        new_obslist_[j].updateImagePoint(k,quads.col(index_reprojection));
                     }
+
 
                     // SM_INFO_STREAM("NORM: "<<norms<<"\n");
                 }
@@ -64,7 +110,8 @@ namespace aslam
                 std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
                 
                 aslam::Time stamp = obslist_[j].time();
-                // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",get_mat(obslist,false,0,std::vector<cv::Scalar>({cv::Scalar(0,255,0)}),2));
+                cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
+
             }
         }
 
@@ -189,7 +236,7 @@ namespace aslam
                             colors.push_back(cv::Scalar(0,0,255));
                             aslam::Time stamp = obslist_[i].time();
 
-                            cv::Mat color_img = get_mat(obs,true,0.,colors,5.0);
+                            cv::Mat color_img = get_mat(obs,false,0.,colors,5.0);
                             cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_original.png",color_img);
                         }
                         
@@ -303,7 +350,7 @@ namespace aslam
                             obslist.clear();
                             cv::Mat temp_img;
                             obslist.push_back(reprojection_wrappers_[j].obslist_[i]);
-                            temp_img = get_mat(obslist,false,0.,colors,5.0);
+                            temp_img = get_mat(obslist,false,0.,colors,2.0);
 
                             aslam::Time stamp = obslist_[i].time();
                             cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_projection_"+std::to_string(j)+".png",temp_img);
@@ -372,7 +419,7 @@ namespace aslam
                             cv::circle(img_color, outCornerList[j],circle_size, colors[i],2);
                             if (show_corners)
                             {
-                                cv::putText(img_color,std::to_string(outCornerIdx_[j]),outCornerList[j],cv::FONT_HERSHEY_COMPLEX_SMALL,1,cv::Scalar(255,0,0),2,false);
+                                cv::putText(img_color,std::to_string(outCornerIdx_[j]),outCornerList[j],cv::FONT_HERSHEY_COMPLEX_SMALL,1.0,cv::Scalar(255,0,0),2,false);
                             }
                         }         
                 }

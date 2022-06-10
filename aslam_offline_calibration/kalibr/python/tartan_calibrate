@@ -228,7 +228,7 @@ def main():
 
 
 
-    num_iterations = 7
+    num_iterations = 1
     for iteration in range(num_iterations):
         while True:
             try:
@@ -425,7 +425,7 @@ def main():
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
                     obsdb.getAllObsCam(cam_id)
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,[])
+                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
                     for obs in new_obs:
                         obsdb.addObservation(cam_id,obs)
                     obslist[cam_id] = new_obs
