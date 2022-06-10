@@ -228,7 +228,7 @@ def main():
 
 
 
-    num_iterations = 1
+    num_iterations = 2
     for iteration in range(num_iterations):
         while True:
             try:
@@ -254,10 +254,7 @@ def main():
 
                 print("initializing calibrator")
                 calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman)
-                # adding the initial observation database to the logs
-                if (iteration==0):
-                    tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
-
+  
                 options = calibrator.estimator.getOptions()
                 options.infoGainDelta = parsed.miTol
                 options.checkValidity = True
@@ -411,6 +408,9 @@ def main():
                             if len(batches_to_check)>1:
                                 progress_filter.sample()
                                 
+                # adding the  observation database to the logs
+                tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
+
                 #final output
                 print("")
                 print("")
@@ -425,14 +425,14 @@ def main():
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
                     obsdb.getAllObsCam(cam_id)
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
+                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["targetpointcloud"])
                     for obs in new_obs:
                         obsdb.addObservation(cam_id,obs)
                     obslist[cam_id] = new_obs
 
-                tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
+                # tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
                 #saving the logs
-                with open('log_big.pkl', 'w') as f:
+                with open('log.pkl', 'w') as f:
                     dill.dump(tartanlogs, f)
 
                 #initialize the calibration graph

@@ -41,7 +41,6 @@ namespace aslam
 
                 cv::Point2f pixel;
                 Eigen::MatrixXd target_image_frame(2,num_target_corners);
-                Eigen::MatrixXd target_image_frame_stripped(2,num_target_corners);
                 cv::Mat tagCorners(1, 2, CV_32F);
 
                 for (int i=0; i< num_target_corners; i++)
@@ -54,7 +53,6 @@ namespace aslam
                 Eigen::VectorXd norms_reprojection, norms_target;
                 for (int k=0; k< num_target_corners; k++)
                 {
-                    target_image_frame_stripped = target_image_frame;
                     // find distance to closest quad detected
                     norms_reprojection = (quads.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
                     norms_reprojection.minCoeff(&index_reprojection);
@@ -64,19 +62,19 @@ namespace aslam
                     /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
                     if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
                     {
-                        // find distance to closest other corner detected
-                        if (k< num_target_corners -1)
-                        {
-                            target_image_frame_stripped.block(0,k,2,num_target_corners-k) = target_image_frame_stripped.block(0,k+1,2,num_target_corners-k);
-                        }
+                        // SM_INFO_STREAM("K: "<<k);
+ 
 
-                        target_image_frame_stripped.conservativeResize(2,num_target_corners-1);
+                        norms_target = (target_image_frame.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
+                        std::vector<size_t> idx(norms_target.size());
+                        index_target = 0;
+                        
+                        std::iota(idx.begin(),idx.end(),0);
+                        std::stable_sort(idx.begin(), idx.end(),[&norms_target](size_t i1, size_t i2) {return norms_target[i1] <norms_target[i2];});
+                        index_target = idx[1];
 
-
-                        norms_target = (target_image_frame_stripped.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
-                        norms_target.minCoeff(&index_target);
-
-                        int refine_window_size = static_cast<int>(norms_target(index_target)/50.0);
+                        int refine_window_size = static_cast<int>(sqrt(norms_target(index_target))/2.5);
+                        int refine_raw = refine_window_size;
                         if (refine_window_size <1)
                         {
                             refine_window_size = 1;
@@ -86,7 +84,8 @@ namespace aslam
                             refine_window_size = 7;
                         }
                         
-                        SM_INFO_STREAM("Original:"<<norms_target(index_target));
+                        SM_INFO_STREAM("Norm:"<<norms_target(index_target));
+                        SM_INFO_STREAM("Closest point from "<< target_image_frame.col(k) << " is "<< target_image_frame.col(index_target));
                         SM_INFO_STREAM("Window: "<<refine_window_size);
 
                         //subpixel refinement

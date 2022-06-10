@@ -64,12 +64,14 @@ def main():
         f = pl.figure(2)
         f.suptitle('Polar errors')
 
-        stat = stats[1]
+        stat = stats[0]
+        print(len(stat))
         angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
         # sort by polar angle
         sae_1 = angleError[ angleError[:,0].argsort() ]
 
         stat = stats[-1]
+        print(len(stat))
         angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
         # sort by polar angle
         sae_2 = angleError[ angleError[:,0].argsort() ]
@@ -89,8 +91,8 @@ def main():
         pl.xlabel('polar angle (deg)')
         pl.ylabel('reprojection error (pixels)')
         pl.subplot(222)
-        pl.hist(sae_1[:,0],alpha=0.5)
-        pl.hist(sae_2[:,0],alpha=0.5)
+        pl.hist(sae_1[:,0],alpha=0.5,bins=list(range(210)[::20]))
+        pl.hist(sae_2[:,0],alpha=0.5,bins=list(range(210)[::20]))
         plt.legend(['idx 1','idx2'])
         pl.grid('on')
         pl.xlabel('polar angle (deg)')
@@ -121,7 +123,7 @@ def main():
         f = pl.figure(3)
         f.suptitle('Azimuth errors')
 
-        stat = stats[1]
+        stat = stats[0]
         angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
         # sort by azimuthal angle
         sae_1 = angleError[ angleError[:,0].argsort() ]
