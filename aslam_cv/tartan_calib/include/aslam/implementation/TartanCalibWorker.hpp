@@ -60,7 +60,8 @@ namespace aslam
 
                     /// TODO: Make threshold tunable
                     /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
-                    if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
+                    // if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
+                    if (norms_reprojection(index_reprojection) < 10.0 )
                     {
                         // SM_INFO_STREAM("K: "<<k);
  
@@ -84,9 +85,9 @@ namespace aslam
                             refine_window_size = 7;
                         }
                         
-                        SM_INFO_STREAM("Norm:"<<norms_target(index_target));
-                        SM_INFO_STREAM("Closest point from "<< target_image_frame.col(k) << " is "<< target_image_frame.col(index_target));
-                        SM_INFO_STREAM("Window: "<<refine_window_size);
+                        // SM_INFO_STREAM("Norm:"<<norms_target(index_target));
+                        // SM_INFO_STREAM("Closest point from "<< target_image_frame.col(k) << " is "<< target_image_frame.col(index_target));
+                        // SM_INFO_STREAM("Window: "<<refine_window_size);
 
                         //subpixel refinement
                         tagCorners.at<float>(0,0) = quads.coeff(0,index_reprojection);

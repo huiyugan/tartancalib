@@ -16,15 +16,6 @@ Eigen::VectorXd e2k(const C * camera, Eigen::Vector3d const & p) {
   Eigen::VectorXd k;
   camera->vsEuclideanToKeypoint(p, k);
 
-  Eigen::VectorXd xyz_in_(3);
-  xyz_in_(0) = 0 ;
-  xyz_in_(1) = 0;
-  xyz_in_(2) = 1.0;
-  Eigen::VectorXd out;
-
-  camera->vsEuclideanToKeypoint(xyz_in_,out);
-  SM_INFO_STREAM("outtt" <<out <<" \n");
-
   return k;
 }
 
@@ -135,6 +126,36 @@ bool initializeIntrinsics(C* camera, const boost::python::object& py_obslist)
   return success;
 }
 
+template<typename C>
+boost::python::list getReprojectionErrors(C* camera, const boost::python::object& py_obslist)
+{
+  //convert python list to stl vector
+  boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
+  std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist(begin, end);
+  sm::kinematics::Transformation T_target_camera;
+  boost::python::list all_errs;
+  Eigen::Vector2d y;
+  Eigen::VectorXd yhat;
+  for (auto obs: obslist)
+  {
+    camera->estimateTransformation(obs,T_target_camera);
+    sm::kinematics::Transformation T_camera_target = T_target_camera.inverse();
+    boost::python::list  obs_err;
+    for (size_t i = 0; i < obs.target()->size(); ++i) {
+      
+      const Eigen::Vector3d& euclidean =  dynamic_cast< const Eigen::Vector3d &>(T_camera_target * obs.target()->point(i))  ;
+
+      if (obs.imagePoint(i, y)
+          && camera->vsEuclideanToKeypoint(euclidean,yhat )) {
+        obs_err.append((y - yhat).norm());
+      }
+    }
+    all_errs.append(obs_err);
+
+  }
+  return all_errs; 
+}
+
 }  // namespace detail
 
 template<typename T>
@@ -144,6 +165,7 @@ Eigen::MatrixXd getParameters(T * D, bool p, bool d, bool s) {
   D->getParameters(P, p, d, s);
   return P;
 }
+
 
 void exportCameraGeometryBase() {
   sm::python::Id_python_converter<aslam::cameras::CameraId>::register_converter();
@@ -158,6 +180,7 @@ void exportCameraGeometryBase() {
       .def("createRandomKeypoint", &CameraGeometryBase::createRandomKeypoint, "Create a valid, random keypoint. This is useful for unit testing and experiments.")
       .def("createRandomVisiblePoint",&CameraGeometryBase::createRandomVisiblePoint, "Create a valid point in space visible by the camera.\np = createRandomVisiblePoint(depth).")
       .def("getProjections", &detail::getProjections<CameraGeometryBase>, "Get the reprojections used for tartancalib.")
+      .def("getReprojectionErrors",&detail::getReprojectionErrors<CameraGeometryBase>,"Get all reprojection errors given an observation.")
       .def("euclideanToKeypoint", &detail::e2k<CameraGeometryBase>, "Map a 3x1 Euclidean point to a keypoint.\nk = euclideanToKeypoint(p)")
       .def("euclideanToKeypointJp", &detail::e2kJp<CameraGeometryBase>, "Map a 3x1 Euclidean point to a keypoint and get the Jacobian of the mapping with respect to small changes in the point.\n(k, Jp) = euclideanToKeypoint(p)")
       .def("homogeneousToKeypoint", &detail::eh2k<CameraGeometryBase>, "Map a 4x1 homogeneous Euclidean point to a keypoint.\nk = euclideanToKeypoint(p)")

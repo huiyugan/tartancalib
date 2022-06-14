@@ -20,13 +20,98 @@ def parseArgs():
 
     return parser.parse_args()
 
+def get_polars(cams,obsdb):
+    # print(len(cams))
+    # print(len(cams[0]))
+    camera_init = cams[0][0]
+    camera_final = cams[-1][0]
+    # print(camera_init.projection().getParameters().flatten())
+    # print(camera_final.projection().getParameters().flatten())
+
+    obslist = obsdb[-1].observations[0]
+    orig_err = np.concatenate(camera_init.getReprojectionErrors(obslist))
+
+    camera_final = cams[-1][0]
+    final_err = np.concatenate(camera_final.getReprojectionErrors(obslist))
+
+    print("original")
+    print(np.mean(np.array(orig_err)))
+    print(np.std(np.array(orig_err)))
+
+    print("tartan")
+    print(np.mean(np.array(final_err)))
+    print(np.std(np.array(final_err)))
+
+    print(camera_init.projection().getParameters().flatten())
+    print(camera_final.projection().getParameters().flatten())
+
+    # print(orig_err[0:10])
+    # print(final_err[0:10])
+
+    img_points_x = np.concatenate([obs.getCornersImageFrame()[:,0] for obs in obslist ])
+    img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obslist ])
+    num_points = len(img_points_x)
+
+    polars = []
+    for i in range(num_points):
+        ec_pnt = camera_final.keypointToEuclidean(np.array([[img_points_x[i]],[img_points_y[i]]])) 
+        polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
+
+    polars = np.array(polars)
+
+    outliers = (orig_err > 5).nonzero()
+    polars = np.delete(polars,outliers)
+    orig_err = np.delete(orig_err,outliers)
+    final_err = np.delete(final_err,outliers)
+    polar_idxs = np.argsort(polars)
+
+    
+
+    # pl.plot(polars[polar_idxs],orig_err[polar_idxs])
+    pl.plot(polars[polar_idxs],np.convolve(orig_err[polar_idxs], np.ones(1000)/1000, mode='same'))
+
+    # pl.plot(polars[polar_idxs],final_err[polar_idxs])
+    pl.plot(polars[polar_idxs],np.convolve(final_err[polar_idxs], np.ones(1000)/1000, mode='same'))
+
+    # pl.scatter(np.array(polars)[polar_idxs],np.array(final_err)[polar_idxs])
+
+    # z = np.polyfit(polars, orig_err, 2)
+    # p_1 = np.poly1d(z)(polars)
+
+    # z = np.polyfit(polars, final_err, 2)
+    # p_2 = np.poly1d(z)(polars)
+
+    # pl.plot(polars,p_1)
+    # pl.plot(polars,p_2)
+    # pl.hist(polars,alpha=0.5)
+
+    pl.xlabel('Polar Angle')
+    pl.ylabel('Reprojection Error')
+    pl.legend(['Original Model','Tartan Model','Original Model','Tartan Model'])
+    pl.show()
+    
+    # pl.hist(orig_err,alpha=0.5,bins=np.arange(0,2.0,0.1))
+    # pl.hist(final_err,alpha=0.5,bins=np.arange(0,2.0,0.1))
+    # pl.hist(polars)
+    # pl.legend(['Original Model','Tartan Model'])
+    # pl.show()
+    
+    # pl.savefig('lengend.png')
+    
+    # 
+
+
 def main():
     parsed = parseArgs()
 
     with open(parsed.file, 'r') as f:
         tartanlog = dill.load(f)
-    tartanobs = [log.ObservationDatabase_ for log in tartanlog]
+    
+    # print(len(tartanlog))
     cams = [log.camera_ for log in tartanlog]
+    # print([cam[0].projection().getParameters().flatten() for cam in cams])
+    tartanobs = [log.ObservationDatabase_ for log in tartanlog]
+    get_polars(cams,tartanobs)
     stats = [log.stats_ for log in tartanlog]
 
     plotter = PlotCollection.PlotCollection("Calibration report")

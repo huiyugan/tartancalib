@@ -34,6 +34,7 @@
 #include "aslam/calibration/core/IncrementalOptimizationProblem.h"
 #include "aslam/calibration/base/Timestamp.h"
 #include "aslam/calibration/exceptions/InvalidOperationException.h"
+#include <sm/logging.hpp>
 
 namespace aslam {
   namespace calibration {
@@ -448,9 +449,10 @@ namespace aslam {
         _finalCost = srv.JFinal;
       }
       ret.batchAccepted = keepBatch;
-
+      SM_INFO_STREAM("Force:: "<<force);
       // remove batch if necessary
       if (!keepBatch) {
+        SM_INFO_STREAM("Batch rejected");
         // restore variables
         _problem->restoreDesignVariables();
 

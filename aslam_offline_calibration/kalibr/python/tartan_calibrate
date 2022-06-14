@@ -22,14 +22,21 @@ import random
 import signal
 from tartan_logging import TartanLogging
 import dill
+import copy
 
 np.set_printoptions(suppress=True)
 
 # tartan calib specific settings
-fovs = np.array([[90,90,90,90,90,90,90],[90,90,90,90,90,90,90]])
-poses = np.array([[90,90,90,90,0,90,90],[0,180,270,90,0,0,180]])
-resolutions = np.array([[1000,1000,1000,1000,1000,1000,1000],[1000,1000,1000,1000,1000,1000,1000]])
-projections = ["pinhole","pinhole","pinhole","pinhole","pinhole","homography","cornerpredictor"]
+# fovs = np.array([[90,90,90,90,90,90,90],[90,90,90,90,90,90,90]])
+# poses = np.array([[90,90,90,90,0,90,90],[0,180,270,90,0,0,180]])
+# resolutions = np.array([[1000,1000,1000,1000,1000,1000,1000],[1000,1000,1000,1000,1000,1000,1000]])
+# projections = ["pinhole","pinhole","pinhole","pinhole","pinhole","homography","cornerpredictor"]
+
+fovs = np.array([[90],[90]])
+poses = np.array([[90],[0]])
+resolutions = np.array([[1000],[1000]])
+projections = ["cornerpredictor"]
+
 num_corners = np.array([])
 log_file = 'log.txt'
 
@@ -228,7 +235,7 @@ def main():
 
 
 
-    num_iterations = 2
+    num_iterations = 3
     for iteration in range(num_iterations):
         while True:
             try:
@@ -294,8 +301,9 @@ def main():
                         est_baselines.append( sm.Transformation(baseline.T()) )
                     T_tc_guess = graph.getTargetPoseGuess(timestamp, cameraList, est_baselines)
                                 
-                    success = calibrator.addTargetView(obs_tuple, T_tc_guess)
-                    
+                    # success = calibrator.addTargetView(obs_tuple, T_tc_guess)
+                    success = calibrator.addTargetView(obs_tuple, T_tc_guess,True)
+                    print(success)
                     #display process
                     if (verbose or (view_id % 25) == 0) and calibrator.estimator.getNumBatches()>0 and view_id>1:
                         print("")
@@ -396,7 +404,7 @@ def main():
                                 #replace the original batch with the corrected
                                 calibrator.estimator.removeBatch( calibrator.views[batch_id] )
                                 calibrator.views[batch_id] = new_batch
-                                rval = calibrator.estimator.addBatch( new_batch, False )
+                                rval = calibrator.estimator.addBatch( new_batch, True )
                                 
                                 #queue the batch for removal if the corrected batch was rejected
                                 if not rval.batchAccepted:
@@ -408,8 +416,7 @@ def main():
                             if len(batches_to_check)>1:
                                 progress_filter.sample()
                                 
-                # adding the  observation database to the logs
-                tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
+
 
                 #final output
                 print("")
@@ -425,15 +432,12 @@ def main():
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
                     obsdb.getAllObsCam(cam_id)
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["targetpointcloud"])
+                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
                     for obs in new_obs:
                         obsdb.addObservation(cam_id,obs)
                     obslist[cam_id] = new_obs
 
-                # tartanlogs.append(TartanLogging.TartanLogger(obsdb,cam.geometry,kcc.getAllPointStatistics(calibrator,0)))
-                #saving the logs
-                with open('log.pkl', 'w') as f:
-                    dill.dump(tartanlogs, f)
+
 
                 #initialize the calibration graph
                 graph = kcc.MulticamCalibrationGraph(obsdb)
@@ -466,6 +470,18 @@ def main():
                 G=None; 
                 if numCams>1: 
                     G=graph
+
+                #saving the logs
+                # adding the  observation database to the logs
+
+
+                tartanlogs.append(TartanLogging.TartanLogger(obsdb,[copy.deepcopy(cam_.geometry) for cam_ in calibrator.cameras],kcc.getAllPointStatistics(calibrator,0)))
+                # for log in tartanlogs:
+                #     for cam_ in log.camera_:
+                #         print(cam_.projection().getParameters().flatten())
+
+                with open('log.pkl', 'w') as f:
+                    dill.dump(tartanlogs, f)
                 
             except kcc.OptimizationDiverged:
                 restartAttempts-=1
