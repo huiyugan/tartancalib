@@ -229,14 +229,15 @@ def main():
         sys.exit(-1)
        
     #loop to restart the optimization
-    restartAttempts=3
-    initOutlierRejection=True
-    removedOutlierCorners=list() 
+    
 
 
 
-    num_iterations = 3
+    num_iterations = 2
     for iteration in range(num_iterations):
+        restartAttempts=10
+        initOutlierRejection=True
+        removedOutlierCorners=list() 
         while True:
             try:
                 #compute initial guesses for the baselines, intrinsics
@@ -302,7 +303,7 @@ def main():
                     T_tc_guess = graph.getTargetPoseGuess(timestamp, cameraList, est_baselines)
                                 
                     # success = calibrator.addTargetView(obs_tuple, T_tc_guess)
-                    success = calibrator.addTargetView(obs_tuple, T_tc_guess,True)
+                    success = calibrator.addTargetView(obs_tuple, T_tc_guess,False)
                     print(success)
                     #display process
                     if (verbose or (view_id % 25) == 0) and calibrator.estimator.getNumBatches()>0 and view_id>1:
@@ -404,7 +405,7 @@ def main():
                                 #replace the original batch with the corrected
                                 calibrator.estimator.removeBatch( calibrator.views[batch_id] )
                                 calibrator.views[batch_id] = new_batch
-                                rval = calibrator.estimator.addBatch( new_batch, True )
+                                rval = calibrator.estimator.addBatch( new_batch, False )
                                 
                                 #queue the batch for removal if the corrected batch was rejected
                                 if not rval.batchAccepted:

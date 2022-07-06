@@ -126,6 +126,16 @@ bool initializeIntrinsics(C* camera, const boost::python::object& py_obslist)
   return success;
 }
 
+template <class T>
+boost::python::list toPythonList(std::vector<T> vector) {
+  typename std::vector<T>::iterator iter;
+  boost::python::list list;
+  for (iter = vector.begin(); iter != vector.end(); ++iter) {
+    list.append(*iter);
+  }
+return list;
+}
+
 template<typename C>
 boost::python::list getReprojectionErrors(C* camera, const boost::python::object& py_obslist)
 {
@@ -136,24 +146,26 @@ boost::python::list getReprojectionErrors(C* camera, const boost::python::object
   boost::python::list all_errs;
   Eigen::Vector2d y;
   Eigen::VectorXd yhat;
+  std::vector<Eigen::VectorXd>  obs_err_list;
   for (auto obs: obslist)
   {
     camera->estimateTransformation(obs,T_target_camera);
     sm::kinematics::Transformation T_camera_target = T_target_camera.inverse();
-    boost::python::list  obs_err;
+    
     for (size_t i = 0; i < obs.target()->size(); ++i) {
       
       const Eigen::Vector3d& euclidean =  dynamic_cast< const Eigen::Vector3d &>(T_camera_target * obs.target()->point(i))  ;
 
       if (obs.imagePoint(i, y)
           && camera->vsEuclideanToKeypoint(euclidean,yhat )) {
-        obs_err.append((y - yhat).norm());
+        obs_err_list.push_back((y - yhat));
       }
     }
-    all_errs.append(obs_err);
 
   }
-  return all_errs; 
+  boost::python::list all_errs_python = toPythonList(obs_err_list);
+
+  return all_errs_python; 
 }
 
 }  // namespace detail

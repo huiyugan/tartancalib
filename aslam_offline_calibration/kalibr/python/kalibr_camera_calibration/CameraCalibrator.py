@@ -386,6 +386,7 @@ def getReprojectionErrors(cself, cam_id):
     all_corners = list(); all_reprojections = list(); all_reprojection_errs =list()
     
     gc.disable() #append speed up
+    total_corners = 0
     for view_id, view in enumerate(cself.views):
         if cam_id in list(view.rerrs.keys()):
             view_corners=list(); view_reprojections=list(); view_reprojection_errs=list()
@@ -395,6 +396,7 @@ def getReprojectionErrors(cself, cam_id):
                     corner = rerr.getMeasurement()
                     reprojection = rerr.getPredictedMeasurement()
                     err = corner-reprojection
+                    total_corners += 1
                 else:
                     corner = np.array([None, None])
                     reprojection = np.array([None, None])

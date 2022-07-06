@@ -28,7 +28,7 @@
 #include <sm/kinematics/Transformation.hpp>
 #include "apriltags/TagDetector.h"
 #include "apriltags/Tag36h11.h"
-
+#include "implementation/Datasetwriterhelper.hpp"
 namespace aslam
 {
     
@@ -136,6 +136,7 @@ namespace aslam
             std::vector<aslam::cameras::GridCalibrationTargetObservation> getNewObs(void);
             void homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection );
             void match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection);
+            bool export_dataset(std::string path);
 
             
            

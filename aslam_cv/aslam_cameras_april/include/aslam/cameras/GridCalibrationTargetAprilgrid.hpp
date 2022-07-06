@@ -94,6 +94,10 @@ class GridCalibrationTargetAprilgrid : public GridCalibrationTargetBase {
 
   AprilgridOptions options(){return _options;}
 
+  /// \brief size of a tag [m]
+  /// Tartan: I want to use this
+  double _tagSize;
+
  private:
   /// \brief initialize the object
   void initialize();
@@ -101,8 +105,6 @@ class GridCalibrationTargetAprilgrid : public GridCalibrationTargetBase {
   /// \brief initialize the grid with the points
   void createGridPoints();
 
-  /// \brief size of a tag [m]
-  double _tagSize;
 
   /// \brief space between tags (tagSpacing [m] = tagSize * tagSpacing)
   double _tagSpacing;

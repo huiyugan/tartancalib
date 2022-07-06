@@ -449,10 +449,8 @@ namespace aslam {
         _finalCost = srv.JFinal;
       }
       ret.batchAccepted = keepBatch;
-      SM_INFO_STREAM("Force:: "<<force);
       // remove batch if necessary
       if (!keepBatch) {
-        SM_INFO_STREAM("Batch rejected");
         // restore variables
         _problem->restoreDesignVariables();
 

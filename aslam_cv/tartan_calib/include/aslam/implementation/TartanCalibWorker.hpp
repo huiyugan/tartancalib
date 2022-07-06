@@ -5,6 +5,120 @@ namespace aslam
     namespace cameras
     {
 
+        template<typename C>
+        bool TartanCalibWorker<C>::export_dataset(std::string path)
+        {
+            // open file
+            FILE* file = fopen(path.c_str(), "wb");
+            if (!file) {
+                return false;
+            }
+
+            //write header
+            // File format identifier
+            uint8_t header[10];
+            header[0] = 'c';
+            header[1] = 'a';
+            header[2] = 'l';
+            header[3] = 'i';
+            header[4] = 'b';
+            header[5] = '_';
+            header[6] = 'd';
+            header[7] = 'a';
+            header[8] = 't';
+            header[9] = 'a';
+            fwrite(header, 1, 10, file);
+
+            // File format version
+            // version 1 means it's an aruco/checkboard target
+            // we dump x y locations of corners in the target frame because they may not be evenly spaced.
+            const u32 version = 1;
+            write_one(&version, file);
+
+            // Camers
+            /// TODO: for now we just support single-cam output, because every camera gets a seperate tartan calib class
+            u32 num_cameras = 1;
+            write_one(&num_cameras, file);
+            for (int camera_index = 0; camera_index < num_cameras; ++ camera_index) {
+                u32 width = in_width_;
+                write_one(&width, file);
+                u32 height = in_height_;
+                write_one(&height, file);
+            }
+
+            // Imagesets
+            u32 num_imagesets = num_frames_;
+            write_one(&num_imagesets, file);
+            for (int imageset_index = 0; imageset_index < num_imagesets; ++ imageset_index) {
+                const string& filename = "placeholder.png"; // we extract imgs from a bag, so not sure what else to put here
+                u32 filename_len = filename.size();
+                write_one(&filename_len, file);
+                fwrite(filename.data(), 1, filename_len, file);
+                
+                std::vector<cv::Point2f> outCornerList;
+                new_obslist_[imageset_index].getCornersIdx(outCornerIdx_);
+                new_obslist_[imageset_index].getCornersImageFrame(outCornerList);
+
+                for (int camera_index = 0; camera_index < num_cameras; ++ camera_index) {
+                    
+                    u32 num_features = outCornerList.size();
+                    write_one(&num_features, file);
+                    for (int feature_idx =0; feature_idx <num_features; feature_idx++ ) {
+                        cv::Point2f point = outCornerList[feature_idx];
+                        write_one(&point.x, file);
+                        write_one(&point.y, file);
+                        i32 id_32bit = outCornerIdx_[feature_idx];
+                        write_one(&id_32bit, file);
+                    }
+                }
+            }
+
+            u32 num_known_geometries = 1; // number of calibration targets in view
+            write_one(&num_known_geometries, file);
+
+
+            /// /// \brief dump an april tag
+            ///   point ordering: (e.g. 2x2 grid)
+            ///          12-----13  14-----15
+            ///          | TAG 3 |  | TAG 4 |
+            ///          8-------9  10-----11
+            ///          4-------5  6-------7
+            ///    y     | TAG 1 |  | TAG 2 |
+            ///   ^      0-------1  2-------3
+            ///   |-->x
+            for (int geometry_index = 0; geometry_index < num_known_geometries; ++ geometry_index) {
+                // adding information on number of rows and columns
+                // in theory we only need one of the two
+                i32 rows = target_->rows();
+                i32 cols = target_->cols();
+
+                write_one(&rows,file);
+                write_one(&cols,file);
+
+                Eigen::MatrixXd target_points;
+                target_points = target_->points().transpose(); 
+
+                // number of features we're about to spit out              
+                u32 feature_id_to_position_size = target_points.cols();
+                write_one(&feature_id_to_position_size, file);
+
+                for (int j=0; j <feature_id_to_position_size; j++) {
+
+                    i32 id_32bit = j;
+                    write_one(&id_32bit, file);
+
+                    float target_x = static_cast<float>(target_points.coeff(0,j));
+                    write_one(&target_x, file);
+
+                    float target_y = static_cast<float>(target_points.coeff(1,j));
+                    write_one(&target_y, file);
+                }
+            }
+  
+            fclose(file);            
+
+        }
+
         template< typename C>
         void TartanCalibWorker<C>::match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection)
         {  
@@ -207,6 +321,8 @@ namespace aslam
             myfile.open (log_file,std::ios_base::app);
             myfile << std::to_string(num_corners_end)<<"\n";
             myfile.close();
+
+            export_dataset("test.bin");
 
             return new_obslist_;
         }
