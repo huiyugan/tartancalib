@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import dill
 import matplotlib.pyplot as plt
+import matplotlib
 import cv2
 import pylab as pl
 import math
@@ -114,6 +115,8 @@ def get_polars(cams,obsdb):
     orig_err = np.array([np.linalg.norm(orig_err[:,i]) for i in range(num_points)])
     final_err = np.array([np.linalg.norm(final_err[:,i]) for i in range(num_points)])
     # pl.plot(polars[polar_idxs],orig_err[polar_idxs])
+    matplotlib.rc('xtick', labelsize=20) 
+    matplotlib.rc('ytick', labelsize=20)
     pl.plot(polars[polar_idxs],np.convolve(orig_err[polar_idxs], np.ones(100)/100, mode='same'))
 
     # pl.plot(polars[polar_idxs],final_err[polar_idxs])
@@ -127,18 +130,18 @@ def get_polars(cams,obsdb):
     print(np.std(final_err[polar_idxs][-1000:]))
     print(np.mean(final_err[polar_idxs][-1000:]))
 
-    pl.xlabel('Polar Angle')
-    pl.ylabel('Reprojection Error')
-    # pl.legend(['Original Model','Tartan Model','Original Model','Tartan Model'])
+    pl.xlabel('Polar Angle',fontsize=20)
+    pl.ylabel('Reprojection Error',fontsize=20)
+    pl.legend(['Original Model','Tartan Model'],fontsize=20)
 
     # rolling var along last axis
     orig_std = np.std(rolling_window(orig_err[polar_idxs], 100), axis=-1)
     final_std = np.std(rolling_window(final_err[polar_idxs], 100), axis=-1)
     
-    pl.plot(polars[polar_idxs],orig_std)
-    pl.plot(polars[polar_idxs],final_std)
+    # pl.plot(polars[polar_idxs],orig_std)
+    # pl.plot(polars[polar_idxs],final_std)
 
-    pl.legend(['Original Model','Tartan Model','Original Model','Tartan Model','Original Std','New std'])
+    # pl.legend(['Original Model','Tartan Model','Original Model','Tartan Model','Original Std','New std'])
 
     pl.show()
     
