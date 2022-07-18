@@ -16,8 +16,11 @@ namespace aslam {
     class NoMEstimator : public MEstimator {
     public:
       virtual ~NoMEstimator();
+      NoMEstimator(double weight = 1.0);
       virtual double getWeight(double squaredError) const;
       virtual std::string name() const;
+
+      double _weight;
     };
 
     class  GemanMcClureMEstimator : public MEstimator {

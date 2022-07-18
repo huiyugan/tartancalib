@@ -117,18 +117,18 @@ def get_polars(cams,obsdb):
     # pl.plot(polars[polar_idxs],orig_err[polar_idxs])
     matplotlib.rc('xtick', labelsize=20) 
     matplotlib.rc('ytick', labelsize=20)
-    pl.plot(polars[polar_idxs],np.convolve(orig_err[polar_idxs], np.ones(100)/100, mode='same'))
+    pl.plot(polars[polar_idxs],np.convolve(orig_err[polar_idxs], np.ones(1000)/1000, mode='same'))
 
     # pl.plot(polars[polar_idxs],final_err[polar_idxs])
-    pl.plot(polars[polar_idxs],np.convolve(final_err[polar_idxs], np.ones(100)/100, mode='same'))
+    pl.plot(polars[polar_idxs],np.convolve(final_err[polar_idxs], np.ones(1000)/1000, mode='same'))
 
     print("orig:")
-    print(np.std(orig_err[polar_idxs][-1000:]))
-    print(np.mean(orig_err[polar_idxs][-1000:]))
+    print(np.std(orig_err[polar_idxs]))
+    print(np.mean(orig_err[polar_idxs]))
 
     print("tartan:")
-    print(np.std(final_err[polar_idxs][-1000:]))
-    print(np.mean(final_err[polar_idxs][-1000:]))
+    print(np.std(final_err[polar_idxs]))
+    print(np.mean(final_err[polar_idxs]))
 
     pl.xlabel('Polar Angle',fontsize=20)
     pl.ylabel('Reprojection Error',fontsize=20)

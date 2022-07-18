@@ -15,7 +15,7 @@ void exportMEstimators()
     .def("name", &MEstimator::name)
     ;
 
-  class_< NoMEstimator, boost::shared_ptr<NoMEstimator>, bases<MEstimator> >("NoMEstimator", init<>())
+  class_< NoMEstimator, boost::shared_ptr<NoMEstimator>, bases<MEstimator> >("NoMEstimator", init<double>())
   ;
 
   class_< GemanMcClureMEstimator, boost::shared_ptr<GemanMcClureMEstimator>, bases<MEstimator> >("GemanMcClureMEstimator", init<double>())

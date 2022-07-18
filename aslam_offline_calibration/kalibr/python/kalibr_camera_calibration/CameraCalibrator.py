@@ -146,7 +146,7 @@ class CalibrationTarget(object):
 
 class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):        
     @classmethod
-    def fromTargetViewObservations(cls, cameras, target, baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=True):
+    def fromTargetViewObservations(cls, cameras, target, baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=False,usePolarWeighting=False):
         rval = CalibrationTargetOptimizationProblem()        
 
         #store the arguements in case we want to rebuild a modified problem
@@ -215,6 +215,17 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
                     if useBlakeZissermanMest:
                         mest = aopt.BlakeZissermanMEstimator( 2.0 )
                         rerr.setMEstimatorPolicy(mest)
+                    
+                    if usePolarWeighting:
+                        # stat = getPointStatistics(cself,view_id,cam_id,p_idx)
+                        v = normalize(camera.geometry.keypointToEuclidean(y))
+                        polarAngle = math.acos(v[2])
+                        if np.rad2deg(polarAngle) < 50:
+                            mest = aopt.NoMEstimator(0.0)
+                            rerr.setMEstimatorPolicy(mest)
+
+
+
                     rval.addErrorTerm(rerr)
                     rval.rerrs[cam_id].append(rerr)
                 else:
@@ -223,7 +234,7 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
         sm.logDebug("Adding a view with {0} cameras and {1} error terms".format(len(cams_in_view), rerr_cnt))
         return rval
 
-def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMest=True):
+def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMest=False):
     #translate (camid,obs) tuple to dict
     obsdict=dict()
     for cidx, obs in batch.rig_observations:
@@ -248,9 +259,11 @@ def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMe
     return new_problem
         
 class CameraCalibration(object):
-    def __init__(self, cameras, baseline_guesses, estimateLandmarks=False, verbose=False, useBlakeZissermanMest=True):
+    def __init__(self, cameras, baseline_guesses, estimateLandmarks=False, verbose=False, useBlakeZissermanMest=False, usePolarWeighting=True):
         self.cameras = cameras
         self.useBlakeZissermanMest = useBlakeZissermanMest
+
+        self.usePolarWeighting = usePolarWeighting # tartan implementation: more weight to corners that are closer to the edge of the frame
         #create the incremental estimator
         self.estimator = ic.IncrementalEstimator(CALIBRATION_GROUP_ID)
         self.linearSolverOptions = self.estimator.getLinearSolverOptions()
@@ -270,7 +283,7 @@ class CameraCalibration(object):
     
     def addTargetView(self, rig_observations, T_tc_guess, force=False):
         #create the problem for this batch and try to add it 
-        batch_problem = CalibrationTargetOptimizationProblem.fromTargetViewObservations(self.cameras, self.target, self.baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=self.useBlakeZissermanMest)
+        batch_problem = CalibrationTargetOptimizationProblem.fromTargetViewObservations(self.cameras, self.target, self.baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=self.useBlakeZissermanMest, usePolarWeighting=self.usePolarWeighting)
         self.estimator_return_value = self.estimator.addBatch(batch_problem, force)
         
         if self.estimator_return_value.numIterations >= self.optimizerOptions.maxIterations:

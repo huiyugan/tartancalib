@@ -235,7 +235,7 @@ def main():
 
     num_iterations = 2
     for iteration in range(num_iterations):
-        restartAttempts=10
+        restartAttempts=100
         initOutlierRejection=True
         removedOutlierCorners=list() 
         while True:
@@ -263,6 +263,11 @@ def main():
                 print("initializing calibrator")
                 calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman)
   
+                # if iteration == 0:
+                #     calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=False,usePolarWeighting=True)
+                # else:
+                #     calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=False,usePolarWeighting=True)
+
                 options = calibrator.estimator.getOptions()
                 options.infoGainDelta = parsed.miTol
                 options.checkValidity = True
