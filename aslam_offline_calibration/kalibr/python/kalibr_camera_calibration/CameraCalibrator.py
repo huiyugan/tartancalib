@@ -18,6 +18,7 @@ import math
 import gc
 import sys
 
+from enum import Enum
 np.set_printoptions(suppress=True, precision=8)
 
 #DV group IDs
@@ -144,9 +145,25 @@ class CalibrationTarget(object):
     def getPoint(self,i):
         return P_t_ex[i]
 
+class PolarOptions(Enum):
+    NONE = 0
+    CUTOFF = 1
+    RAND_BIN_PICK = 2
+
+class PolarWeighting(object):
+    def __init__(self):
+        self.binaryCutOff = 0 # minimum polar angle for corner to be considered
+        self.numBins = 10  # number of bins in polar coordinates
+        self.mode = PolarOptions.NONE
+        self.polarAngles = []
+        self.binCounts = []
+        self.bins = []
+        self.minPolarAngle = None 
+        self.maxPolarAngle = None
+
 class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):        
     @classmethod
-    def fromTargetViewObservations(cls, cameras, target, baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=False,usePolarWeighting=False):
+    def fromTargetViewObservations(cls, cameras, target, baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=False,polarObject=PolarWeighting()):
         rval = CalibrationTargetOptimizationProblem()        
 
         #store the arguements in case we want to rebuild a modified problem
@@ -216,14 +233,13 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
                         mest = aopt.BlakeZissermanMEstimator( 2.0 )
                         rerr.setMEstimatorPolicy(mest)
                     
-                    if usePolarWeighting:
+                    if polarObject.mode == PolarOptions.CUTOFF:
                         # stat = getPointStatistics(cself,view_id,cam_id,p_idx)
                         v = normalize(camera.geometry.keypointToEuclidean(y))
                         polarAngle = math.acos(v[2])
-                        if np.rad2deg(polarAngle) < 50:
+                        if np.rad2deg(polarAngle) < polarObject.binaryCutOff:
                             mest = aopt.NoMEstimator(0.0)
                             rerr.setMEstimatorPolicy(mest)
-
 
 
                     rval.addErrorTerm(rerr)
@@ -257,13 +273,16 @@ def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMe
                                                                                   useBlakeZissermanMest=useBlakeZissermanMest)
 
     return new_problem
-        
+
+
+
+
 class CameraCalibration(object):
-    def __init__(self, cameras, baseline_guesses, estimateLandmarks=False, verbose=False, useBlakeZissermanMest=False, usePolarWeighting=True):
+    def __init__(self, cameras, baseline_guesses, estimateLandmarks=False, verbose=False, useBlakeZissermanMest=False, polarObject=PolarWeighting()):
         self.cameras = cameras
         self.useBlakeZissermanMest = useBlakeZissermanMest
 
-        self.usePolarWeighting = usePolarWeighting # tartan implementation: more weight to corners that are closer to the edge of the frame
+        self.polarObject = polarObject # tartan implementation: more weight to corners that are closer to the edge of the frame
         #create the incremental estimator
         self.estimator = ic.IncrementalEstimator(CALIBRATION_GROUP_ID)
         self.linearSolverOptions = self.estimator.getLinearSolverOptions()
@@ -281,9 +300,38 @@ class CameraCalibration(object):
     def getBaseline(self, i):
         return self.baselines[i]
     
+    def getPolarDistribution(self,obsdb,target,cameras):
+        self.polarDistribution = []
+
+        timestamps = obsdb.getAllViewTimestamps()
+           
+        for time in timestamps:
+            obsdb_ = obsdb.getAllObsAtTimestamp(time)
+            for cam_id, obs in obsdb_:
+                camera = cameras[cam_id]
+                
+                for i in range(0,len(target.P_t_ex)):
+                    p_target = target.P_t_ex[i]
+                    valid, y = obs.imagePoint(i)
+                    if valid:
+                        v = normalize(camera.geometry.keypointToEuclidean(y))
+                        polarAngle = np.rad2deg(math.acos(v[2]))
+                        self.polarDistribution.append(polarAngle)
+            
+            ## save polar angles and statistics to object
+            self.polarObject.polarAngles = self.polarDistribution
+            self.polarObject.minPolarAngle = np.min(self.polarDistribution)
+            self.polarObject.maxPolarAngle = np.max(self.polarDistribution)
+            self.polarObject.bins = np.linspace(self.polarObject.minPolarAngle,self.polarObject.maxPolarAngle,self.polarObject.numBins+1)
+            self.polarObject.binCounts = np.histogram(self.polarObject.polarAngles,self.polarObject.bins)[0]
+
+
     def addTargetView(self, rig_observations, T_tc_guess, force=False):
         #create the problem for this batch and try to add it 
-        batch_problem = CalibrationTargetOptimizationProblem.fromTargetViewObservations(self.cameras, self.target, self.baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=self.useBlakeZissermanMest, usePolarWeighting=self.usePolarWeighting)
+
+
+        batch_problem = CalibrationTargetOptimizationProblem.fromTargetViewObservations(self.cameras, self.target, self.baselines, T_tc_guess, rig_observations, useBlakeZissermanMest=self.useBlakeZissermanMest, polarObject=self.polarObject)
+        
         self.estimator_return_value = self.estimator.addBatch(batch_problem, force)
         
         if self.estimator_return_value.numIterations >= self.optimizerOptions.maxIterations:

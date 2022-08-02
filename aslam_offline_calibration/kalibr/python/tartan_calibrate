@@ -261,8 +261,16 @@ def main():
                     
 
                 print("initializing calibrator")
-                calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman)
+                polar_object = kcc.PolarWeighting()
+                polar_object.mode = kcc.PolarOptions.RAND_BIN_PICK
+                polar_object.binaryCutOff = 50
+
+
+
+                calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman,polarObject=polar_object)
   
+                if polar_object.mode == kcc.PolarOptions.RAND_BIN_PICK :
+                    calibrator.getPolarDistribution(obsdb,kcc.CalibrationTarget(cameraList[0].ctarget.detector.target()),cameraList)
                 # if iteration == 0:
                 #     calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=False,usePolarWeighting=True)
                 # else:
