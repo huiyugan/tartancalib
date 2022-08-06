@@ -223,8 +223,8 @@ namespace aslam
                 
                 std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
                 
-                aslam::Time stamp = obslist_[j].time();
-                cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
+                // aslam::Time stamp = obslist_[j].time();
+                // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
 
             }
         }
@@ -322,7 +322,7 @@ namespace aslam
             myfile << std::to_string(num_corners_end)<<"\n";
             myfile.close();
 
-            export_dataset("test.bin");
+            export_dataset("generic_input.bin");
 
             return new_obslist_;
         }
@@ -632,7 +632,6 @@ namespace aslam
         {
             for (int i= 0; i<num_frames_; i++)
             {
-                
                 for (auto &reprojection: reprojection_wrappers_ )
                 {
                     if (reprojection.reproj_type_ == ReprojectionMode::homography || reprojection.reproj_type_ == ReprojectionMode::pinhole || reprojection.reproj_type_ ==  ReprojectionMode::cornerpredictor )

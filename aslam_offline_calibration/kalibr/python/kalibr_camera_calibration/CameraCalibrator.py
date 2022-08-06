@@ -232,7 +232,8 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
                     if useBlakeZissermanMest:
                         mest = aopt.BlakeZissermanMEstimator( 2.0 )
                         rerr.setMEstimatorPolicy(mest)
-                    
+                    # print("HERE ")
+                    # print(polarObject.mode)
                     if polarObject.mode == PolarOptions.CUTOFF:
                         # stat = getPointStatistics(cself,view_id,cam_id,p_idx)
                         v = normalize(camera.geometry.keypointToEuclidean(y))
@@ -240,6 +241,14 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
                         if np.rad2deg(polarAngle) < polarObject.binaryCutOff:
                             mest = aopt.NoMEstimator(0.0)
                             rerr.setMEstimatorPolicy(mest)
+                    
+                    elif polarObject.mode == PolarOptions.RAND_BIN_PICK:
+                        v = normalize(camera.geometry.keypointToEuclidean(y))
+                        polarAngle = np.rad2deg(math.acos(v[2]))
+                        bin = np.clip(np.digitize([polarAngle],polarObject.bins)[0]-1,0,len(polarObject.binCounts)-1)
+                        weight = float(np.max(polarObject.binCounts))/float(polarObject.binCounts[bin])
+                        mest = aopt.NoMEstimator(weight)
+                        rerr.setMEstimatorPolicy(mest)
 
 
                     rval.addErrorTerm(rerr)
@@ -250,7 +259,7 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
         sm.logDebug("Adding a view with {0} cameras and {1} error terms".format(len(cams_in_view), rerr_cnt))
         return rval
 
-def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMest=False):
+def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMest=False,polarObject=PolarWeighting()):
     #translate (camid,obs) tuple to dict
     obsdict=dict()
     for cidx, obs in batch.rig_observations:
@@ -270,7 +279,8 @@ def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMe
                                                                                   batch.baselines, 
                                                                                   batch.T_tc_guess, 
                                                                                   batch.rig_observations,
-                                                                                  useBlakeZissermanMest=useBlakeZissermanMest)
+                                                                                  useBlakeZissermanMest=useBlakeZissermanMest,
+                                                                                  polarObject=polarObject)
 
     return new_problem
 
@@ -279,6 +289,8 @@ def removeCornersFromBatch(batch, camId_cornerIdList_tuples, useBlakeZissermanMe
 
 class CameraCalibration(object):
     def __init__(self, cameras, baseline_guesses, estimateLandmarks=False, verbose=False, useBlakeZissermanMest=False, polarObject=PolarWeighting()):
+        print("STARTING MODE")
+        print(polarObject.mode)
         self.cameras = cameras
         self.useBlakeZissermanMest = useBlakeZissermanMest
 

@@ -9,6 +9,7 @@ if(Eigen3_FOUND)
 endif()
 
 find_package(Boost REQUIRED COMPONENTS serialization) 
+find_package(OpenMP REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   sm_common
   sm_eigen

@@ -39,6 +39,7 @@ projections = ["cornerpredictor"]
 
 num_corners = np.array([])
 log_file = 'log.txt'
+force_all_points = False
 
 # list of tartanlogging classes, these will be saved to a pickle for analysis at a later time
 tartanlogs = []
@@ -129,7 +130,12 @@ def parseArgs():
     outputSettings.add_argument('--show-extraction', action='store_true', dest='showextraction', help='Show the calibration target extraction. (disables plots)')
     outputSettings.add_argument('--plot', action='store_true', dest='plot', help='Plot during calibration (this could be slow).')
     outputSettings.add_argument('--dont-show-report', action='store_true', dest='dontShowReport', help='Do not show the report on screen after calibration.')
-       
+    
+    outputSettings.add_argument('--polar_setting', type=int, default=0, dest='polarSetting', help='The way we are using polar angles of detections to improve results. 0=None, don not use. 1=set an angle threshold, under this threshold no corners will be used. 2 = bins, divide the corners into polar angle bins and give each bin a weight.')
+    outputSettings.add_argument('--force_all', action='store_true', dest='forceAll', help='Force all points to be used.')
+    outputSettings.add_argument('--log_dest', type=str, dest='logDest',default='log', help='Logging for later analysis.')
+    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=50, help='Logging for later analysis.')
+
     #print help if no argument is specified
     if len(sys.argv)==1:
         parser.print_help()
@@ -160,7 +166,7 @@ def parseArgs():
 
 def main():
     parsed = parseArgs()
-    
+    print(parsed.dontShowReport)
     #logging modes
     if parsed.verbose:
         sm.setLoggingLevel(sm.LoggingLevel.Debug)
@@ -262,10 +268,15 @@ def main():
 
                 print("initializing calibrator")
                 polar_object = kcc.PolarWeighting()
-                polar_object.mode = kcc.PolarOptions.RAND_BIN_PICK
-                polar_object.binaryCutOff = 50
 
+                if iteration > 0:
+                    if parsed.polarSetting == 1:
+                        polar_object.mode = kcc.PolarOptions.CUTOFF
+                        polar_object.binaryCutOff = parsed.polarCutoff
 
+                    elif parsed.polarSetting == 2:
+                        polar_object.mode = kcc.PolarOptions.RAND_BIN_PICK
+                        polar_object.numBins = 10
 
                 calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman,polarObject=polar_object)
   
@@ -316,7 +327,7 @@ def main():
                     T_tc_guess = graph.getTargetPoseGuess(timestamp, cameraList, est_baselines)
                                 
                     # success = calibrator.addTargetView(obs_tuple, T_tc_guess)
-                    success = calibrator.addTargetView(obs_tuple, T_tc_guess,False)
+                    success = calibrator.addTargetView(obs_tuple, T_tc_guess,parsed.forceAll)
                     print(success)
                     #display process
                     if (verbose or (view_id % 25) == 0) and calibrator.estimator.getNumBatches()>0 and view_id>1:
@@ -413,12 +424,12 @@ def main():
                             removeCount = sum([len(removelist) for cidx, removelist in cornerRemovalList_allCams])
                             if removeCount>0:
                                 original_batch = calibrator.views[batch_id]
-                                new_batch = kcc.removeCornersFromBatch(original_batch, cornerRemovalList_allCams, useBlakeZissermanMest=parsed.doBlakeZisserman)
+                                new_batch = kcc.removeCornersFromBatch(original_batch, cornerRemovalList_allCams, useBlakeZissermanMest=parsed.doBlakeZisserman,polarObject=polar_object)
                                 
                                 #replace the original batch with the corrected
                                 calibrator.estimator.removeBatch( calibrator.views[batch_id] )
                                 calibrator.views[batch_id] = new_batch
-                                rval = calibrator.estimator.addBatch( new_batch, False )
+                                rval = calibrator.estimator.addBatch( new_batch, parsed.forceAll )
                                 
                                 #queue the batch for removal if the corrected batch was rejected
                                 if not rval.batchAccepted:
@@ -442,11 +453,11 @@ def main():
                 obsdb = kcc.ObservationDatabase(parsed.max_delta_approxsync)
                 
 
-
+                
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
                     obsdb.getAllObsCam(cam_id)
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
+                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,[])
                     for obs in new_obs:
                         obsdb.addObservation(cam_id,obs)
                     obslist[cam_id] = new_obs
@@ -470,17 +481,17 @@ def main():
                 
                 #write to file
                 bagtag = os.path.splitext(parsed.bagfile)[0]
-                resultFile = bagtag + "-camchain.yaml"
+                resultFile = bagtag + '-'+parsed.logDest + str(iteration)  + "-camchain.yaml"
                 kcc.saveChainParametersYaml(calibrator, resultFile, graph)
                 print("Results written to file: {0}".format(resultFile))
                 
                 #save results to file
-                resultFileTxt = bagtag + "-results-cam.txt"
+                resultFileTxt = bagtag + '-'+parsed.logDest + str(iteration) + "-results-cam.txt"
                 kcc.saveResultTxt(calibrator, filename=resultFileTxt)
                 print("  Detailed results written to file: {0}".format(resultFileTxt))
                 
                 #generate report
-                reportFile = bagtag + "-report-cam.pdf"
+                reportFile = bagtag + '-'+parsed.logDest + str(iteration) +"-report-cam.pdf"
                 G=None; 
                 if numCams>1: 
                     G=graph
@@ -494,7 +505,7 @@ def main():
                 #     for cam_ in log.camera_:
                 #         print(cam_.projection().getParameters().flatten())
 
-                with open('log.pkl', 'w') as f:
+                with open(parsed.logDest+'.pkl', 'w') as f:
                     dill.dump(tartanlogs, f)
                 
             except kcc.OptimizationDiverged:

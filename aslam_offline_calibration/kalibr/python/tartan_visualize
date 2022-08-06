@@ -4,20 +4,25 @@ from tartan_logging import TartanLogging
 import numpy as np
 import argparse
 import dill
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('pdf')
+import matplotlib.pyplot as plt
 import cv2
 import pylab as pl
 import math
 from sm import PlotCollection
 from matplotlib.backends.backend_pdf import PdfPages
+import cv2 
+
 
 def parseArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f','--file',required=True)
-    parser.add_argument('-m','--mode',required=True)
-    parser.add_argument('-i','--idxs', nargs='+')
-    parser.add_argument('-ci','--camid',default=0)
+    parser.add_argument('-obsfile','--obsfile',required=True,help="The log pickle you want to use.")
+    parser.add_argument('-obs_it','--obs_it',required=False,default=-1,help="The idx (i.e., tartan iteration) you want to use for evaluation. Default =-1, meaning we use the last iteration.")
+    parser.add_argument('-cams','--cams',nargs='+',required=True,help="Provide the pickles of camera models to test.")
+    parser.add_argument('-cams_it','--cams_it',nargs='+',required=True,help="Provide the iteration from each pickle you want to use for visualization. E.g. if you want to compare two runs and for each the final trained model, enter -1 -1.")
+    parser.add_argument('-cam_names','--cam_names',nargs='+',help="Provide names for all cams to print on the plots.")
+    parser.add_argument('-camids','--camids',nargs='+',default=0)
 
     return parser.parse_args()
 
@@ -41,261 +46,317 @@ def rolling_window(a, window):
     strides = a.strides + (a.strides[-1],)
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
+def plotHistograms(evalObs,evalCams,camNames):
+    num_evals = len(evalCams)
+    for i in range(num_evals):
+            cam = evalCams[i]
+            obslist = evalObs[i]
+            err = cam.getReprojectionErrors(evalObs[i])
 
-def get_polars(cams,obsdb):
-    camera_init = cams[0][0]
-    camera_final = cams[-1][0]
+            # pl.hist(orig_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
+            # pl.hist(orig_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
 
-    obslist = obsdb[-1].observations[0]
+            # pl.hist(final_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
+            # pl.hist(final_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
+def plotSphericalError(evalObs,evalCams,camNames):
+    num_evals = len(evalCams)
 
-    orig_err = camera_init.getReprojectionErrors(obslist)
-    num_points = len(orig_err)
-    orig_err = np.transpose(np.reshape(orig_err,(num_points,2)))
+    for i in range(num_evals):
+        cam = evalCams[i]
+        obslist = evalObs[i]
+        err = cam.getReprojectionErrors(evalObs[i])
+        num_points = len(err)
+        err = np.transpose(np.reshape(err,(num_points,2)))
+        mag_err = np.array([np.linalg.norm(err[:,q]) for q in range(num_points)])
+        # remove outliers
+        # delete_idxs = get_outliers(err,4)
+        # err = np.delete(err,delete_idxs,1)
 
-    camera_final = cams[-1][0]
-    final_err = camera_final.getReprojectionErrors(obslist)
-    final_err = np.transpose(np.reshape(final_err,(num_points,2)))
+        # get polar angles
+        img_points_x = np.concatenate([obs.getCornersImageFrame()[:,0] for obs in obslist ])
+        img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obslist ])
 
-    delete_idxs = get_outliers(final_err,4)
-    # delete_idxs = []
-    print(np.shape(final_err))
-    final_err = np.delete(final_err,delete_idxs,1)
-    print(np.shape(final_err))
+        counter = 0
+        for obs_num, obs in enumerate(obslist):
+            target_points = obs.getCornersTargetFrame()
+            num_points = np.shape(target_points)[0]
+            max_error = np.max(mag_err[counter:counter+num_points])
+            print("Interval from {0} to {1}, error is: {2}".format(counter,counter+num_points,max_error))
+            counter += num_points
+            if (max_error > 1):
+                # get transformation between board and camera frames
+                success, T_t_c = cam.estimateTransformation(obs)
+                obs.set_T_t_c(T_t_c)
+                T = np.linalg.inv(obs.T_t_c().T())
 
-    # delete_idxs = get_outliers(orig_err,4)
-    orig_err = np.delete(orig_err,delete_idxs,1)
+                #get detected points in target frame
+                
+                target_points_H = np.transpose(np.hstack([target_points,np.ones((num_points,1))]))
+                target_points_camframe = T.dot(target_points_H)
+
+                reproj_x = []
+                reproj_y = []
+                for k in range(num_points):
+                    ec_pnt = cam.euclideanToKeypoint(np.array([[target_points_camframe[0,k]],[target_points_camframe[1,k]],[target_points_camframe[2,k]]])) 
+                    reproj_x.append(ec_pnt[0])
+                    reproj_y.append(ec_pnt[1])
+
+                pl.imshow(obs.getImage(),cmap='gray')
+                img_points = obs.getCornersImageFrame()
+                pl.scatter(img_points[:,0],img_points[:,1],color='green',s=1)
+                pl.savefig(str(max_error)+'_detections_.png')
+                pl.clf()
+                pl.imshow(obs.getImage(),cmap='gray')
+                pl.scatter(reproj_x,reproj_y,color='red',s=1)
+                pl.savefig(str(max_error)+'_reprojections_.png')
+                pl.clf()
 
 
-    print("original")
-    print(np.mean(orig_err, 1, dtype=np.float))
-    print(np.std(orig_err, 1, dtype=np.float))
+        # img_points_x = np.delete(img_points_x,delete_idxs)
+        # img_points_y = np.delete(img_points_y,delete_idxs)
+        num_points = len(img_points_x)
 
+        polars = []
+        for j in range(num_points):
+            ec_pnt = cam.keypointToEuclidean(np.array([[img_points_x[j]],[img_points_y[j]]])) 
+            polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
 
-    print("tartan")
-    print(np.mean(np.array(final_err), 1, dtype=np.float))
-    print(np.std(np.array(final_err), 1, dtype=np.float))
-    # print(np.std(np.sort(np.array(final_err))[:-10]))
+        polars = np.array(polars)
+        polar_idxs = np.argsort(polars)
+        print("Stats for {0}, mean: {1}, std:{2}.".format(camNames[i],str(np.mean(np.array(err), 1, dtype=np.float)),str(np.std(np.array(err), 1, dtype=np.float))))
+        
+        err = np.array([np.linalg.norm(err[:,i]) for i in range(num_points)])
+        matplotlib.rc('xtick', labelsize=20) 
+        matplotlib.rc('ytick', labelsize=20)
+        pl.plot(polars[polar_idxs],np.convolve(err[polar_idxs], np.ones(500)/500, mode='same'))
 
-    # pl.hist(orig_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-    pl.hist(orig_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-
-    # pl.hist(final_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-    pl.hist(final_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-
-    # pl.hist(np.array(final_err),alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
+#     print(np.std(np.array(final_err), 1, dtype=np.float))
+    pl.legend(camNames,fontsize=20)
+    # pl.savefig(camNames[0]+'.png')
     pl.show()
 
-    print(camera_init.projection().getParameters().flatten())
-    print(camera_final.projection().getParameters().flatten())
 
-    # print(orig_err[0:10])
-    # print(final_err[0:10])
+# def get_polars(cams,obsdb):
+#     camera_init = cams[0][0]
+#     camera_final = cams[-1][0]
 
-    img_points_x = np.concatenate([obs.getCornersImageFrame()[:,0] for obs in obslist ])
-    img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obslist ])
+#     obslist = obsdb[-1].observations[0]
 
-    img_points_x = np.delete(img_points_x,delete_idxs)
-    img_points_y = np.delete(img_points_y,delete_idxs)
-    num_points = len(img_points_x)
+#     orig_err = camera_init.getReprojectionErrors(obslist)
+#     num_points = len(orig_err)
+#     orig_err = np.transpose(np.reshape(orig_err,(num_points,2)))
 
-    polars = []
-    for i in range(num_points):
-        ec_pnt = camera_final.keypointToEuclidean(np.array([[img_points_x[i]],[img_points_y[i]]])) 
-        polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
+#     camera_final = cams[-1][0]
+#     final_err = camera_final.getReprojectionErrors(obslist)
+#     final_err = np.transpose(np.reshape(final_err,(num_points,2)))
 
-    polars = np.array(polars)
+#     delete_idxs = get_outliers(final_err,4)
+#     # delete_idxs = []
+#     print(np.shape(final_err))
+#     final_err = np.delete(final_err,delete_idxs,1)
+#     print(np.shape(final_err))
 
-    # outliers = (orig_err > 5).nonzero()
-    # polars = np.delete(polars,outliers)
-    # orig_err = np.delete(orig_err,outliers)
-    # final_err = np.delete(final_err,outliers)
-    polar_idxs = np.argsort(polars)
+#     # delete_idxs = get_outliers(orig_err,4)
+#     orig_err = np.delete(orig_err,delete_idxs,1)
 
-    
-    orig_err = np.array([np.linalg.norm(orig_err[:,i]) for i in range(num_points)])
-    final_err = np.array([np.linalg.norm(final_err[:,i]) for i in range(num_points)])
-    # pl.plot(polars[polar_idxs],orig_err[polar_idxs])
-    matplotlib.rc('xtick', labelsize=20) 
-    matplotlib.rc('ytick', labelsize=20)
-    pl.plot(polars[polar_idxs],np.convolve(orig_err[polar_idxs], np.ones(1000)/1000, mode='same'))
 
-    # pl.plot(polars[polar_idxs],final_err[polar_idxs])
-    pl.plot(polars[polar_idxs],np.convolve(final_err[polar_idxs], np.ones(1000)/1000, mode='same'))
+#     print("original")
+#     print(np.mean(orig_err, 1, dtype=np.float))
+#     print(np.std(orig_err, 1, dtype=np.float))
 
-    print("orig:")
-    print(np.std(orig_err[polar_idxs]))
-    print(np.mean(orig_err[polar_idxs]))
 
-    print("tartan:")
-    print(np.std(final_err[polar_idxs]))
-    print(np.mean(final_err[polar_idxs]))
+#     print("tartan")
+#     print(np.mean(np.array(final_err), 1, dtype=np.float))
+#     print(np.std(np.array(final_err), 1, dtype=np.float))
+#     # print(np.std(np.sort(np.array(final_err))[:-10]))
 
-    pl.xlabel('Polar Angle',fontsize=20)
-    pl.ylabel('Reprojection Error',fontsize=20)
-    pl.legend(['Original Model','Tartan Model'],fontsize=20)
+#     # pl.hist(orig_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
+#     # pl.hist(orig_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
 
-    # rolling var along last axis
-    orig_std = np.std(rolling_window(orig_err[polar_idxs], 100), axis=-1)
-    final_std = np.std(rolling_window(final_err[polar_idxs], 100), axis=-1)
-    
-    # pl.plot(polars[polar_idxs],orig_std)
-    # pl.plot(polars[polar_idxs],final_std)
+#     # pl.hist(final_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
+#     # pl.hist(final_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
 
-    # pl.legend(['Original Model','Tartan Model','Original Model','Tartan Model','Original Std','New std'])
 
-    pl.show()
-    
+
+
+
 def main():
     parsed = parseArgs()
 
-    with open(parsed.file, 'r') as f:
-        tartanlog = dill.load(f)
+    assert len(parsed.cams) == len(parsed.cams_it)
+    num_evals = len(parsed.cams)
+
+    with open(parsed.obsfile, 'r') as f:
+        tartanObsLog = dill.load(f)
     
-    cams = [log.camera_ for log in tartanlog]
-    tartanobs = [log.ObservationDatabase_ for log in tartanlog]
-    get_polars(cams,tartanobs)
-    stats = [log.stats_ for log in tartanlog]
+    tartanObs = [log.ObservationDatabase_ for log in tartanObsLog]
+    print("obs iteration:"+str(parsed.obs_it))
+    evalObsDb = tartanObs[parsed.obs_it]
+    evalObs = [evalObsDb.observations[int(parsed.camids[i])] for i in range(num_evals)]
 
-    plotter = PlotCollection.PlotCollection("Calibration report")
+    evalCams = []
+    
+    if type(parsed.camids) != list:
+        cam_list = []
+        for _ in range(num_evals):
+            cam_list.append(int(parsed.camids))
+    else:
+        cam_list = list(map(int,parsed.camids))
+    
+    for i, camlog in enumerate(parsed.cams):
+        with open(camlog, 'r') as f:
+            camlog_loaded = dill.load(f)
 
-    if (parsed.mode=="compare"):
-        figs = list()    
-        assert parsed.idxs != None
-        idxs = [int(x) for x in parsed.idxs]
+        evalCams.append(camlog_loaded[int(parsed.cams_it[i])].camera_[cam_list[i]])
 
-        compare_obs = [tartanobs[i] for i in idxs]
-        f = pl.figure(1)
-        f.suptitle('Reprojections')
+
+    plotSphericalError(evalObs,evalCams,parsed.cam_names)
+
+    # cams = [log.camera_ for log in tartanlog]
+
+    # get_polars(cams,tartanobs)
+    # stats = [log.stats_ for log in tartanlog]
+
+    # plotter = PlotCollection.PlotCollection("Calibration report")
+
+    # if (parsed.mode=="compare"):
+    #     figs = list()    
+    #     assert parsed.idxs != None
+    #     idxs = [int(x) for x in parsed.idxs]
+
+    #     compare_obs = [tartanobs[i] for i in idxs]
+    #     f = pl.figure(1)
+    #     f.suptitle('Reprojections')
         
-        obslist = compare_obs[0].observations[int(parsed.camid)]
+    #     obslist = compare_obs[0].observations[int(parsed.camid)]
 
-        # reprojections in image            
-        for obs in obslist:
-            pl.subplot(121)
-            pl.imshow(obs.getImage(),cmap='gray')
-            points = obs.getCornersImageFrame()  
-            pl.scatter(points[:,0],points[:,1],color='red',s=0.3)
+    #     # reprojections in image            
+    #     for obs in obslist:
+    #         pl.subplot(121)
+    #         pl.imshow(obs.getImage(),cmap='gray')
+    #         points = obs.getCornersImageFrame()  
+    #         pl.scatter(points[:,0],points[:,1],color='red',s=0.3)
 
-        obslist = compare_obs[1].observations[int(parsed.camid)]
+    #     obslist = compare_obs[1].observations[int(parsed.camid)]
             
-        for obs in obslist:
-            pl.subplot(122)
-            pl.imshow(obs.getImage(),cmap='gray')
-            points = obs.getCornersImageFrame()  
-            pl.scatter(points[:,0],points[:,1],color='red',s=0.3)
+    #     for obs in obslist:
+    #         pl.subplot(122)
+    #         pl.imshow(obs.getImage(),cmap='gray')
+    #         points = obs.getCornersImageFrame()  
+    #         pl.scatter(points[:,0],points[:,1],color='red',s=0.3)
 
-        plotter.add_figure('Reprojections', f)
-        figs.append(f)
+    #     plotter.add_figure('Reprojections', f)
+    #     figs.append(f)
 
-        #POLAR plot
-        f = pl.figure(2)
-        f.suptitle('Polar errors')
+    #     #POLAR plot
+    #     f = pl.figure(2)
+    #     f.suptitle('Polar errors')
 
-        stat = stats[0]
-        print(len(stat))
-        angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
-        # sort by polar angle
-        sae_1 = angleError[ angleError[:,0].argsort() ]
+    #     stat = stats[0]
+    #     print(len(stat))
+    #     angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
+    #     # sort by polar angle
+    #     sae_1 = angleError[ angleError[:,0].argsort() ]
 
-        stat = stats[-1]
-        print(len(stat))
-        angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
-        # sort by polar angle
-        sae_2 = angleError[ angleError[:,0].argsort() ]
+    #     stat = stats[-1]
+    #     print(len(stat))
+    #     angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
+    #     # sort by polar angle
+    #     sae_2 = angleError[ angleError[:,0].argsort() ]
 
-        z = np.polyfit(sae_1[:,0], sae_1[:,1], 2)
-        p_1 = np.poly1d(z)(sae_1[:,0])
+    #     z = np.polyfit(sae_1[:,0], sae_1[:,1], 2)
+    #     p_1 = np.poly1d(z)(sae_1[:,0])
 
-        z = np.polyfit(sae_2[:,0], sae_2[:,1], 2)
-        p_2 = np.poly1d(z)(sae_2[:,0])
+    #     z = np.polyfit(sae_2[:,0], sae_2[:,1], 2)
+    #     p_2 = np.poly1d(z)(sae_2[:,0])
 
-        pl.subplot(221)
-        pl.scatter(sae_1[:,0],sae_1[:,1],s=0.1,alpha=0.5)
-        pl.scatter(sae_2[:,0],sae_2[:,1],s=0.1,alpha=0.5)
-        pl.ylim(0,5.0)
-        plt.legend(['idx 1','idx2'])
-        pl.grid('on')
-        pl.xlabel('polar angle (deg)')
-        pl.ylabel('reprojection error (pixels)')
-        pl.subplot(222)
-        pl.hist(sae_1[:,0],alpha=0.5,bins=list(range(210)[::20]))
-        pl.hist(sae_2[:,0],alpha=0.5,bins=list(range(210)[::20]))
-        plt.legend(['idx 1','idx2'])
-        pl.grid('on')
-        pl.xlabel('polar angle (deg)')
-        pl.ylabel('count')
+    #     pl.subplot(221)
+    #     pl.scatter(sae_1[:,0],sae_1[:,1],s=0.1,alpha=0.5)
+    #     pl.scatter(sae_2[:,0],sae_2[:,1],s=0.1,alpha=0.5)
+    #     pl.ylim(0,5.0)
+    #     plt.legend(['idx 1','idx2'])
+    #     pl.grid('on')
+    #     pl.xlabel('polar angle (deg)')
+    #     pl.ylabel('reprojection error (pixels)')
+    #     pl.subplot(222)
+    #     pl.hist(sae_1[:,0],alpha=0.5,bins=list(range(210)[::20]))
+    #     pl.hist(sae_2[:,0],alpha=0.5,bins=list(range(210)[::20]))
+    #     plt.legend(['idx 1','idx2'])
+    #     pl.grid('on')
+    #     pl.xlabel('polar angle (deg)')
+    #     pl.ylabel('count')
 
-        pl.subplot(223)
-        plt.plot(sae_1[:,0],p_1)
-        plt.plot(sae_2[:,0],p_2)
-        plt.legend(['idx 1','idx2'])
+    #     pl.subplot(223)
+    #     plt.plot(sae_1[:,0],p_1)
+    #     plt.plot(sae_2[:,0],p_2)
+    #     plt.legend(['idx 1','idx2'])
 
-        pl.grid('on')
-        pl.xlabel('polar angle (deg)')
-        pl.ylabel('reprojection error (pixels)')
-        pl.subplot(224)
-        pl.hist(sae_1[:,0],alpha=0.5)
-        pl.hist(sae_2[:,0],alpha=0.5)
-        plt.legend(['idx 1','idx2'])
-        pl.grid('on')
-        pl.xlabel('polar angle (deg)')
-        pl.ylabel('count')
+    #     pl.grid('on')
+    #     pl.xlabel('polar angle (deg)')
+    #     pl.ylabel('reprojection error (pixels)')
+    #     pl.subplot(224)
+    #     pl.hist(sae_1[:,0],alpha=0.5)
+    #     pl.hist(sae_2[:,0],alpha=0.5)
+    #     plt.legend(['idx 1','idx2'])
+    #     pl.grid('on')
+    #     pl.xlabel('polar angle (deg)')
+    #     pl.ylabel('count')
        
 
-        plotter.add_figure('Polar Angles', f)
-        figs.append(f)
+    #     plotter.add_figure('Polar Angles', f)
+    #     figs.append(f)
 
-        # AZIMUTH
-        #angle plot
-        f = pl.figure(3)
-        f.suptitle('Azimuth errors')
+    #     # AZIMUTH
+    #     #angle plot
+    #     f = pl.figure(3)
+    #     f.suptitle('Azimuth errors')
 
-        stat = stats[0]
-        angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
-        # sort by azimuthal angle
-        sae_1 = angleError[ angleError[:,0].argsort() ]
+    #     stat = stats[0]
+    #     angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
+    #     # sort by azimuthal angle
+    #     sae_1 = angleError[ angleError[:,0].argsort() ]
 
-        stat = stats[-1]
-        angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
-        # sort by azimuthal angle
-        sae_2 = angleError[ angleError[:,0].argsort() ]
+    #     stat = stats[-1]
+    #     angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
+    #     # sort by azimuthal angle
+    #     sae_2 = angleError[ angleError[:,0].argsort() ]
 
-        pl.subplot(221)
-        pl.plot(sae_1[:,0],sae_1[:,1],'bx-')
-        pl.grid('on')
-        pl.xlabel('azimuth angle (deg)')
-        pl.ylabel('reprojection error (pixels)')
-        pl.subplot(222)
-        pl.hist(sae_1[:,0],alpha=0.5)
-        pl.hist(sae_2[:,0],alpha=0.5)
-        pl.grid('on')
-        pl.xlabel('azimuth angle (deg)')
-        pl.ylabel('count')
+    #     pl.subplot(221)
+    #     pl.plot(sae_1[:,0],sae_1[:,1],'bx-')
+    #     pl.grid('on')
+    #     pl.xlabel('azimuth angle (deg)')
+    #     pl.ylabel('reprojection error (pixels)')
+    #     pl.subplot(222)
+    #     pl.hist(sae_1[:,0],alpha=0.5)
+    #     pl.hist(sae_2[:,0],alpha=0.5)
+    #     pl.grid('on')
+    #     pl.xlabel('azimuth angle (deg)')
+    #     pl.ylabel('count')
 
 
-        pl.subplot(223)
-        pl.plot(sae_2[:,0],sae_2[:,1],'bx-')
-        pl.grid('on')
-        pl.xlabel('azimuth angle (deg)')
-        pl.ylabel('reprojection error (pixels)')
-        pl.subplot(224)
-        pl.hist(sae_1[:,0],alpha=0.5)
-        pl.hist(sae_2[:,0],alpha=0.5)
-        pl.grid('on')
-        pl.xlabel('azimuth angle (deg)')
-        pl.ylabel('count')
+    #     pl.subplot(223)
+    #     pl.plot(sae_2[:,0],sae_2[:,1],'bx-')
+    #     pl.grid('on')
+    #     pl.xlabel('azimuth angle (deg)')
+    #     pl.ylabel('reprojection error (pixels)')
+    #     pl.subplot(224)
+    #     pl.hist(sae_1[:,0],alpha=0.5)
+    #     pl.hist(sae_2[:,0],alpha=0.5)
+    #     pl.grid('on')
+    #     pl.xlabel('azimuth angle (deg)')
+    #     pl.ylabel('count')
        
 
-        plotter.add_figure('Azimuth Angles', f)
-        figs.append(f)
+    #     plotter.add_figure('Azimuth Angles', f)
+    #     figs.append(f)
 
-        pdf=PdfPages('report.pdf')
-        for fig in figs:
-            pdf.savefig(fig)
-        pdf.close()
+    #     pdf=PdfPages('report.pdf')
+    #     for fig in figs:
+    #         pdf.savefig(fig)
+    #     pdf.close()
 
-        # pl.show()
-        # plotter.show()
+    #     # pl.show()
+    #     # plotter.show()
 
 
     

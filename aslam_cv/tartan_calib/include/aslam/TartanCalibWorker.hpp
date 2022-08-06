@@ -99,6 +99,7 @@ namespace aslam
               num_frames_ = obslist.size();
               num_views_ = fovs.cols();
               new_obslist_ = obslist_; // eventually we're outputting this variable, but we initialize it with the right observations (i.e., images and time stamps)
+              export_dataset("before_tartan.bin");
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() && resolutions_.cols() == reproj_types.size(), "All inserted tartan matrices need the same number of columns." );
               
               // loading reprojectionwrapper classes
@@ -137,6 +138,7 @@ namespace aslam
             void homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection );
             void match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection);
             bool export_dataset(std::string path);
+            
 
             
            
