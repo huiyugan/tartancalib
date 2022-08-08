@@ -77,39 +77,48 @@ def plotSphericalError(evalObs,evalCams,camNames):
         img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obslist ])
 
         counter = 0
-        for obs_num, obs in enumerate(obslist):
-            target_points = obs.getCornersTargetFrame()
-            num_points = np.shape(target_points)[0]
-            max_error = np.max(mag_err[counter:counter+num_points])
-            print("Interval from {0} to {1}, error is: {2}".format(counter,counter+num_points,max_error))
-            counter += num_points
-            if (max_error > 1):
-                # get transformation between board and camera frames
-                success, T_t_c = cam.estimateTransformation(obs)
-                obs.set_T_t_c(T_t_c)
-                T = np.linalg.inv(obs.T_t_c().T())
+        print("NUM FRAMES"+str(len(obslist)))
+        # for obs_num, obs in enumerate(obslist):
+        #     target_points = obs.getCornersTargetFrame()
+        #     num_points = np.shape(target_points)[0]
+        #     if (num_points > 0):
+        #         max_error = np.max(mag_err[counter:counter+num_points])
+        #         print("Interval from {0} to {1}, error is: {2}".format(counter,counter+num_points,max_error))
+        #         counter += num_points
+        #         if (max_error > 2 ):
+        #             # get transformation between board and camera frames
+        #             success, T_t_c = cam.estimateTransformation(obs)
+        #             obs.set_T_t_c(T_t_c)
+        #             T = np.linalg.inv(obs.T_t_c().T())
 
-                #get detected points in target frame
-                
-                target_points_H = np.transpose(np.hstack([target_points,np.ones((num_points,1))]))
-                target_points_camframe = T.dot(target_points_H)
+        #             #get detected points in target frame
+                    
+        #             target_points_H = np.transpose(np.hstack([target_points,np.ones((num_points,1))]))
+        #             target_points_camframe = T.dot(target_points_H)
 
-                reproj_x = []
-                reproj_y = []
-                for k in range(num_points):
-                    ec_pnt = cam.euclideanToKeypoint(np.array([[target_points_camframe[0,k]],[target_points_camframe[1,k]],[target_points_camframe[2,k]]])) 
-                    reproj_x.append(ec_pnt[0])
-                    reproj_y.append(ec_pnt[1])
+        #             reproj_x = []
+        #             reproj_y = []
+        #             for k in range(num_points):
+        #                 ec_pnt = cam.euclideanToKeypoint(np.array([[target_points_camframe[0,k]],[target_points_camframe[1,k]],[target_points_camframe[2,k]]])) 
+        #                 reproj_x.append(ec_pnt[0])
+        #                 reproj_y.append(ec_pnt[1])
 
-                pl.imshow(obs.getImage(),cmap='gray')
-                img_points = obs.getCornersImageFrame()
-                pl.scatter(img_points[:,0],img_points[:,1],color='green',s=1)
-                pl.savefig(str(max_error)+'_detections_.png')
-                pl.clf()
-                pl.imshow(obs.getImage(),cmap='gray')
-                pl.scatter(reproj_x,reproj_y,color='red',s=1)
-                pl.savefig(str(max_error)+'_reprojections_.png')
-                pl.clf()
+        #             pl.imshow(obs.getImage(),cmap='gray')
+        #             img_points = obs.getCornersImageFrame()
+        #             pl.scatter(img_points[:,0],img_points[:,1],color='green',s=1)
+        #             pl.savefig(str(max_error)+'_'+str(obs.time().toSec())+'_detections_.png')
+        #             pl.clf()
+
+        #             pl.imshow(obs.getImage(),cmap='gray')
+        #             pl.scatter(reproj_x,reproj_y,color='red',s=1)
+        #             pl.savefig(str(max_error)+'_'+str(obs.time().toSec())+'_reprojections_.png')
+        #             pl.clf()
+                    
+        #             pl.imshow(obs.getImage(),cmap='gray')
+        #             pl.scatter(img_points[:,0],img_points[:,1],color='green',s=1)
+        #             pl.scatter(reproj_x,reproj_y,color='red',s=1)
+        #             pl.savefig(str(max_error)+'_'+str(obs.time().toSec())+'_all_.png')
+        #             pl.clf()
 
 
         # img_points_x = np.delete(img_points_x,delete_idxs)
@@ -132,7 +141,7 @@ def plotSphericalError(evalObs,evalCams,camNames):
 
 #     print(np.std(np.array(final_err), 1, dtype=np.float))
     pl.legend(camNames,fontsize=20)
-    # pl.savefig(camNames[0]+'.png')
+    pl.savefig(camNames[0]+'.png')
     pl.show()
 
 

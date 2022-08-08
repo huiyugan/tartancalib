@@ -128,104 +128,159 @@ namespace aslam
                 cv::Mat img_gray = reprojection.obslist_[j].image();
                 cv::Mat img_color;
                 cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR); //convert to color to be able to plot colored dots
-
                 //check the already found corners 
                 new_obslist_[j].getCornersIdx(outCornerIdx_);
-
-                // retrieve quad points from image
-                Eigen::MatrixXd quads = tagDetector_->extractQuads(reprojection.obslist_[j].image());
-
-                // retrieve predicted 
-                sm::kinematics::Transformation out_T_t_c;
-                camera_->estimateTransformation(reprojection.obslist_[j],out_T_t_c);
-                Eigen::Matrix4d T = out_T_t_c.T().inverse();
-
-                cv::Point2f distorted_pixel_cv;
-                Eigen::Vector3d outPoint;
-                Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
-                Eigen::MatrixXd all_target_original,all_target_transformed;
-
-                all_target_original = target_->points().transpose();
-                all_target_original.conservativeResize(4,all_target_original.cols());
-                all_target_original.row(all_target_original.rows()-1) = Eigen::Matrix<double, 1,Eigen::Dynamic>::Ones(1,all_target_original.cols());
-                all_target_transformed = T*all_target_original;
-
-
-                int num_target_corners = all_target_transformed.cols();
-
-                cv::Point2f pixel;
-                Eigen::MatrixXd target_image_frame(2,num_target_corners);
-                cv::Mat tagCorners(1, 2, CV_32F);
-
-                for (int i=0; i< num_target_corners; i++)
+                
+                std::vector<cv::Point2f> outCornerList_imageframe;  
+                if (new_obslist_[j].hasSuccessfulObservation())
                 {
-                    camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
-                    target_image_frame.col(i) = distorted_pixel_location_;
+                    new_obslist_[j].getCornersImageFrame(outCornerList_imageframe);
                 }
-             
-                Eigen::Index index_reprojection, index_target;
-                Eigen::VectorXd norms_reprojection, norms_target;
-                for (int k=0; k< num_target_corners; k++)
+
+                for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
                 {
-                    // find distance to closest quad detected
-                    norms_reprojection = (quads.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
-                    norms_reprojection.minCoeff(&index_reprojection);
+                    cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 5,cv::Scalar(255,0,0),2);   
+                }
+                
+                if (outCornerIdx_.size() >= minInitCornersAutoComplete)
+                { 
+                    // retrieve quad points from image
+                    Eigen::MatrixXd quads = tagDetector_->extractQuads(reprojection.obslist_[j].image());
+
+                    // retrieve predicted 
+                    sm::kinematics::Transformation out_T_t_c;
+                    camera_->estimateTransformation(reprojection.obslist_[j],out_T_t_c);
+                    Eigen::Matrix4d T = out_T_t_c.T().inverse();
+
+                    cv::Point2f distorted_pixel_cv;
+                    Eigen::Vector3d outPoint;
+                    Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
+                    Eigen::MatrixXd all_target_original,all_target_transformed;
+
+                    all_target_original = target_->points().transpose();
+                    all_target_original.conservativeResize(4,all_target_original.cols());
+                    all_target_original.row(all_target_original.rows()-1) = Eigen::Matrix<double, 1,Eigen::Dynamic>::Ones(1,all_target_original.cols());
+                    all_target_transformed = T*all_target_original;
 
 
-                    /// TODO: Make threshold tunable
-                    /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
-                    // if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
-                    if (norms_reprojection(index_reprojection) < 10.0 )
+                    int num_target_corners = all_target_transformed.cols();
+                    int num_quads = quads.cols()/4;
+
+                    cv::Point2f pixel;
+                    Eigen::MatrixXd target_image_frame(2,num_target_corners);
+                    cv::Mat tagCorners(1, 2, CV_32F);
+
+                    for (int i=0; i< num_target_corners; i++)
                     {
-                        // SM_INFO_STREAM("K: "<<k);
- 
-
-                        norms_target = (target_image_frame.colwise() - target_image_frame.col(k)).colwise().squaredNorm();
-                        std::vector<size_t> idx(norms_target.size());
-                        index_target = 0;
-                        
-                        std::iota(idx.begin(),idx.end(),0);
-                        std::stable_sort(idx.begin(), idx.end(),[&norms_target](size_t i1, size_t i2) {return norms_target[i1] <norms_target[i2];});
-                        index_target = idx[1];
-
-                        int refine_window_size = static_cast<int>(sqrt(norms_target(index_target))/2.5);
-                        int refine_raw = refine_window_size;
-                        if (refine_window_size <1)
-                        {
-                            refine_window_size = 1;
-                        }
-                        else if (refine_window_size > 7)
-                        {
-                            refine_window_size = 7;
-                        }
-                        
-                        // SM_INFO_STREAM("Norm:"<<norms_target(index_target));
-                        // SM_INFO_STREAM("Closest point from "<< target_image_frame.col(k) << " is "<< target_image_frame.col(index_target));
-                        // SM_INFO_STREAM("Window: "<<refine_window_size);
-
-                        //subpixel refinement
-                        tagCorners.at<float>(0,0) = quads.coeff(0,index_reprojection);
-                        tagCorners.at<float>(0,1) = quads.coeff(1,index_reprojection);
-                        cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);           
-                        cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
-                        cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
-
-                        quads(0,index_reprojection) = tagCorners.at<float>(0,0);
-                        quads(1,index_reprojection) = tagCorners.at<float>(0,1);
-
-                        new_obslist_[j].updateImagePoint(k,quads.col(index_reprojection));
+                        camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
+                        cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(255,255,255),2);    
+                        target_image_frame.col(i) = distorted_pixel_location_;
                     }
+                
+                    Eigen::Index index_reprojection, index_target;
+                    Eigen::VectorXd norms_reprojection, norms_target;
+
+                    // for each quad, we check if all 4 corners are close to a reprojection
+                    // if positive, we add the quad to the detections
+                    for (int k = 0; k < num_quads; k++)
+                    {
+                        std::vector<Eigen::Index> quad_idxs;
+                        float norm_quad = 0.0;
+                        for (int q = 0; q < 4; q++)
+                        {
+                            norms_reprojection = (target_image_frame.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
+                            norms_reprojection.minCoeff(&index_reprojection);
+                            if (!std::count(quad_idxs.begin(), quad_idxs.end(), index_reprojection))
+                            {
+                                quad_idxs.push_back(index_reprojection);
+                                if (norms_reprojection(index_reprojection) > norm_quad )
+                                {
+                                    norm_quad = norms_reprojection(index_reprojection);
+                                }
+                            }
+                        }
+
+                        
+                        /// TODO: Make threshold tunable
+                        /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
+                        // if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
+                        // at this point we override Kalibr corners for the adaptive subpixel refinement
+                        if (norm_quad < correction_threshold && quad_idxs.size() == 4 )
+                        {
+                            // SM_INFO_STREAM("K: "<<k);
+
+                            for (int q = 0; q <4; q++)
+                            {
+                                // ///TODO: Save above instead of recomputing
+                                // norms_reprojection = (target_image_frame.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
+                                // norms_reprojection.minCoeff(&index_reprojection);
+                                index_reprojection = quad_idxs[q];
+
+                                norms_target = (target_image_frame.colwise() - target_image_frame.col(index_reprojection)).colwise().squaredNorm();
+                                std::vector<size_t> idx(norms_target.size());
+                                index_target = 0;
+                                
+                                std::iota(idx.begin(),idx.end(),0);
+                                std::stable_sort(idx.begin(), idx.end(),[&norms_target](size_t i1, size_t i2) {return norms_target[i1] <norms_target[i2];});
+                                index_target = idx[1];
+
+                                float tag_size = sqrt(norms_target(index_target));
+                                if (tag_size > minTagSizeAutoComplete)
+                                {
+                                    int refine_window_size = static_cast<int>(tag_size/2.5);
+                                    int refine_raw = refine_window_size;
+                                    if (refine_window_size <1)
+                                    {
+                                        refine_window_size = 1;
+                                    }
+                                    else if (refine_window_size > 7)
+                                    {
+                                        refine_window_size = 7;
+                                    }
+                                    
+      
+                                    //subpixel refinement
+
+                                    // start from quads
+                                    // tagCorners.at<float>(0,0) = quads.coeff(0,k*4+q);
+                                    // tagCorners.at<float>(0,1) = quads.coeff(1,k*4+q);
+
+                                    // start from reprojections
+                                    tagCorners.at<float>(0,0) = target_image_frame.coeff(0,index_reprojection);
+                                    tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
+
+                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);           
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);    
+                                    cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
+                                    quads(0,index_reprojection) = tagCorners.at<float>(0,0);
+                                    quads(1,index_reprojection) = tagCorners.at<float>(0,1);
+
+                                    new_obslist_[j].updateImagePoint(index_reprojection,quads.col(index_reprojection));
+                                }
+                            }
+
+                        }
 
 
-                    // SM_INFO_STREAM("NORM: "<<norms<<"\n");
+                        // SM_INFO_STREAM("NORM: "<<norms<<"\n");
+                    }
+                    reprojection.obslist_[j] = new_obslist_[j];
+                    
+                    std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
+                    
+                    aslam::Time stamp = obslist_[j].time();
+                    cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
+
                 }
-                reprojection.obslist_[j] = new_obslist_[j];
-                
-                std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
-                
-                // aslam::Time stamp = obslist_[j].time();
-                // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
-
+                // we delete the corners if they don't have the required number of initial corners to make a good estimation of the pose of the board
+                else
+                {
+                    for (auto corner_idx : outCornerIdx_)
+                    {
+                        new_obslist_[j].removeImagePoint(corner_idx);
+                    }
+                }
             }
         }
 
@@ -343,15 +398,16 @@ namespace aslam
                             std::vector<cv::Scalar> colors;
                             std::vector<aslam::cameras::GridCalibrationTargetObservation> obs;
                             
-                            // these are the newly found corners projected back into the original coordinate frame 
-                            obs.push_back(new_obslist_[i]);
-                            colors.push_back(cv::Scalar(0,255,0));
-        
                             // add the original image
                             obs.push_back(obslist_[i]);
                             colors.push_back(cv::Scalar(0,0,255));
                             aslam::Time stamp = obslist_[i].time();
 
+                            // these are the newly found corners projected back into the original coordinate frame 
+                            obs.push_back(new_obslist_[i]);
+                            colors.push_back(cv::Scalar(0,255,0));
+        
+                            
                             cv::Mat color_img = get_mat(obs,false,0.,colors,5.0);
                             cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_original.png",color_img);
                         }

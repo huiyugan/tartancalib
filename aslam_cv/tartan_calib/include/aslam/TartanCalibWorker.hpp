@@ -255,6 +255,9 @@ namespace aslam
             GridCalibrationTargetAprilgrid::Ptr target_april_;
             boost::shared_ptr<AprilTags::TagDetector> tagDetector_;
 
+            int minInitCornersAutoComplete = 8; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
+            float minTagSizeAutoComplete = 10; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
+            float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
     };
     }
 }
