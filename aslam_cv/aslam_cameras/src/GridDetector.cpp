@@ -103,12 +103,15 @@ bool GridDetector::findTargetNoTransformation(const cv::Mat & image, const aslam
   outObservation.setImage(image);
   outObservation.setTime(stamp);
 
+  int j = 0;
   // Set the observed corners in the observation
   for (int i = 0; i < cornerPoints.rows(); i++) {
     if (validCorners[i])
+    {
       outObservation.updateImagePoint(i, cornerPoints.row(i).transpose());
+      j++;
+    }
   }
-
   return success;
 }
 

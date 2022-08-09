@@ -23,6 +23,7 @@
 #include "apriltags/XYWeight.h"
 
 #include "apriltags/TagDetector.h"
+#include <chrono>
 
 // #define DEBUG_APRIL_QUADS
 
@@ -36,7 +37,6 @@ using namespace std;
 namespace AprilTags {
 
   std::vector<TagDetection> TagDetector::extractTags(const cv::Mat& image) {
-
     // convert to internal AprilTags image (todo: slow, change internally to OpenCV)
     int width = image.cols;
     int height = image.rows;
@@ -586,7 +586,10 @@ namespace AprilTags {
     // saving the image as  
     const std::time_t now = std::time(nullptr) ; // get the current time point
     const std::tm calendar_time = *std::localtime( std::addressof(now) ) ;
-    cv::imwrite("debug_april"+std::to_string(calendar_time.tm_hour)+"_"+std::to_string(calendar_time.tm_min)+"_"+std::to_string(calendar_time.tm_sec)+".png", image_quad);
+
+    auto now_2 = std::chrono::system_clock::now();
+    auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now_2);
+    cv::imwrite("debug_april"+std::to_string(calendar_time.tm_hour)+"_"+std::to_string(calendar_time.tm_min)+"_"+std::to_string(calendar_time.tm_sec)+std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(now_2-seconds).count())+".png", image_quad);
   }
 #endif
 

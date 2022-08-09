@@ -99,6 +99,12 @@ namespace aslam
               num_frames_ = obslist.size();
               num_views_ = fovs.cols();
               new_obslist_ = obslist_; // eventually we're outputting this variable, but we initialize it with the right observations (i.e., images and time stamps)
+              for (auto obs : new_obslist_)
+              {
+                obs.getCornersIdx(outCornerIdx_);
+              }
+              
+              
               export_dataset("before_tartan.bin");
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() && resolutions_.cols() == reproj_types.size(), "All inserted tartan matrices need the same number of columns." );
               

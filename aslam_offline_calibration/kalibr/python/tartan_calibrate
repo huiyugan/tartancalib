@@ -10,7 +10,7 @@ import aslam_cameras_april as acv_april
 import aslam_cv_backend as acvb
 import kalibr_common as kc
 import kalibr_camera_calibration as kcc
-
+import copy 
 import cv2
 import os
 import numpy as np
@@ -236,10 +236,10 @@ def main():
        
     #loop to restart the optimization
     
+    obslistTartan = copy.deepcopy(obslist)
 
 
-
-    num_iterations = 2
+    num_iterations = 1
     for iteration in range(num_iterations):
         restartAttempts=100
         initOutlierRejection=True
@@ -456,11 +456,10 @@ def main():
                 
                 for cam_id in range(0, numCams):
                     cam = cameraList[cam_id]                      
-                    obsdb.getAllObsCam(cam_id)
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslist[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
+                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
                     for obs in new_obs:
                         obsdb.addObservation(cam_id,obs)
-                    obslist[cam_id] = new_obs
+                    obslistTartan[cam_id] = new_obs
 
 
 
