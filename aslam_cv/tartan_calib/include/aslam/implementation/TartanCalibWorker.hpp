@@ -214,10 +214,11 @@ namespace aslam
                     all_target_transformed = T*all_target_original;
 
                     int num_target_corners = all_target_transformed.cols();
+                    int num_target_corners_trimmed = num_target_corners-4;
                     int num_quads = quads.cols()/4;
 
                     cv::Point2f pixel;
-                    Eigen::MatrixXd target_image_frame(2,num_target_corners);
+                    Eigen::MatrixXd target_image_frame(2,num_target_corners), target_image_frame_trimmed(2,num_target_corners);
                     cv::Mat tagCorners(1, 2, CV_32F);
 
                     for (int i=0; i< num_target_corners; i++)
@@ -226,7 +227,9 @@ namespace aslam
                         // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,0,0),2);    
                         target_image_frame.col(i) = distorted_pixel_location_;
                     }
-                
+                    target_image_frame_trimmed = target_image_frame;
+                    target_image_frame_trimmed.conservativeResize(2,num_target_corners_trimmed);
+
                     Eigen::Index index_reprojection, index_target;
                     Eigen::VectorXd norms_reprojection, norms_target;
 
@@ -238,7 +241,7 @@ namespace aslam
                         float norm_quad = 0.0;
                         for (int q = 0; q < 4; q++)
                         {
-                            norms_reprojection = (target_image_frame.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
+                            norms_reprojection = (target_image_frame_trimmed.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
                             norms_reprojection.minCoeff(&index_reprojection);
                             if (!std::count(quad_idxs.begin(), quad_idxs.end(), index_reprojection))
                             {
@@ -266,7 +269,7 @@ namespace aslam
                                 // norms_reprojection.minCoeff(&index_reprojection);
                                 index_reprojection = quad_idxs[q];
 
-                                norms_target = (target_image_frame.colwise() - target_image_frame.col(index_reprojection)).colwise().squaredNorm();
+                                norms_target = (target_image_frame_trimmed.colwise() - target_image_frame_trimmed.col(index_reprojection)).colwise().squaredNorm();
                                 std::vector<size_t> idx(norms_target.size());
                                 index_target = 0;
                                 
