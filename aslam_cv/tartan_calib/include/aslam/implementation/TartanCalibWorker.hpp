@@ -122,6 +122,59 @@ namespace aslam
         template< typename C>
         void TartanCalibWorker<C>::match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection)
         {  
+            cv::Point2f distorted_pixel_cv;
+            Eigen::Vector3d outPoint;
+            Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
+            Eigen::MatrixXd all_target_original,all_target_transformed;
+
+            all_target_original = target_->points().transpose();
+            all_target_original.conservativeResize(4,all_target_original.cols());
+            
+
+            // the board definition only contains the corners of tags, but there is another corner at the corners of the board
+            // we are adding these corners to use them for the refine window size below
+            
+            double min_delta_x = std::numeric_limits<double>::infinity();
+            double min_delta_y = std::numeric_limits<double>::infinity();
+            double min_x = std::numeric_limits<double>::infinity();
+            double max_x = -std::numeric_limits<double>::infinity();
+            double min_y = std::numeric_limits<double>::infinity();
+            double max_y = -std::numeric_limits<double>::infinity();
+
+
+            for (int z = 0; z < all_target_original.cols(); z++)
+            {
+                if (z > 0)
+                {
+                    min_delta_x = std::min(abs(static_cast<double>(all_target_original.coeff(0,z)-all_target_original.coeff(0,z-1))),min_delta_x);
+                    min_delta_y = std::min(abs(static_cast<double>(all_target_original.coeff(1,z)-all_target_original.coeff(1,z-1))),min_delta_y);
+                }
+                min_x = std::min(min_x,static_cast<double>(all_target_original.coeff(0,z)));
+                max_x = std::max(max_x,static_cast<double>(all_target_original.coeff(0,z)));
+                min_y = std::min(min_y,static_cast<double>(all_target_original.coeff(1,z)));
+                max_y = std::max(max_x,static_cast<double>(all_target_original.coeff(1,z)));
+            }
+            // adding the corners
+
+            all_target_original.conservativeResize(all_target_original.rows(),all_target_original.cols()+1);
+            all_target_original(0,all_target_original.cols()-1) = min_x - min_delta_x;
+            all_target_original(1,all_target_original.cols()-1) = min_y ;
+
+            all_target_original.conservativeResize(all_target_original.rows(),all_target_original.cols()+1);
+            all_target_original(0,all_target_original.cols()-1) = max_x + min_delta_x;
+            all_target_original(1,all_target_original.cols()-1) = min_y ;
+
+            all_target_original.conservativeResize(all_target_original.rows(),all_target_original.cols()+1);
+            all_target_original(0,all_target_original.cols()-1) = min_x - min_delta_x;
+            all_target_original(1,all_target_original.cols()-1) = max_y ;
+
+            all_target_original.conservativeResize(all_target_original.rows(),all_target_original.cols()+1);
+            all_target_original(0,all_target_original.cols()-1) = max_x + min_delta_x;
+            all_target_original(1,all_target_original.cols()-1) = max_y ;
+                    
+            // make sure last row is ones so that it's homogeneous
+            all_target_original.row(all_target_original.rows()-1) = Eigen::Matrix<double, 1,Eigen::Dynamic>::Ones(1,all_target_original.cols());
+            
             for (int j=0; j<num_frames_; j++)
             {
                 
@@ -139,9 +192,16 @@ namespace aslam
 
                 for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
                 {
-                    cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 5,cv::Scalar(255,0,0),2);   
+                    // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 5,cv::Scalar(255,0,0),2);   
                 }
-                
+
+                // we are wiping this entry in new_obslist_ because:
+                // 1) if there aren't enough tags, we will reject the entire observation
+                // 2) if we somehow can't re-find the quad for some of the original observations, we will reject that observation because the quality of it is unknown
+                for (auto corner_idx : outCornerIdx_)
+                {
+                    new_obslist_[j].removeImagePoint(corner_idx);
+                }
                 if (outCornerIdx_.size() >= minInitCornersAutoComplete)
                 { 
                     // retrieve quad points from image
@@ -150,18 +210,8 @@ namespace aslam
                     // retrieve predicted 
                     sm::kinematics::Transformation out_T_t_c;
                     camera_->estimateTransformation(reprojection.obslist_[j],out_T_t_c);
-                    Eigen::Matrix4d T = out_T_t_c.T().inverse();
-
-                    cv::Point2f distorted_pixel_cv;
-                    Eigen::Vector3d outPoint;
-                    Eigen::VectorXd keypoint(2),target_original(4),target_transformed(4);
-                    Eigen::MatrixXd all_target_original,all_target_transformed;
-
-                    all_target_original = target_->points().transpose();
-                    all_target_original.conservativeResize(4,all_target_original.cols());
-                    all_target_original.row(all_target_original.rows()-1) = Eigen::Matrix<double, 1,Eigen::Dynamic>::Ones(1,all_target_original.cols());
+                    Eigen::Matrix4d T = out_T_t_c.T().inverse();                 
                     all_target_transformed = T*all_target_original;
-
 
                     int num_target_corners = all_target_transformed.cols();
                     int num_quads = quads.cols()/4;
@@ -173,7 +223,7 @@ namespace aslam
                     for (int i=0; i< num_target_corners; i++)
                     {
                         camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
-                        // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(255,255,255),2);    
+                        // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,0,0),2);    
                         target_image_frame.col(i) = distorted_pixel_location_;
                     }
                 
@@ -227,15 +277,15 @@ namespace aslam
                                 float tag_size = sqrt(norms_target(index_target));
                                 if (tag_size > minTagSizeAutoComplete)
                                 {
-                                    int refine_window_size = static_cast<int>(tag_size/2.5);
+                                    int refine_window_size = static_cast<int>(tag_size/2.0);
                                     int refine_raw = refine_window_size;
-                                    if (refine_window_size <1)
+                                    if (refine_window_size < minResizewindowSize)
                                     {
-                                        refine_window_size = 1;
+                                        refine_window_size = minResizewindowSize;
                                     }
-                                    else if (refine_window_size > 7)
+                                    else if (refine_window_size > maxResizewindowSize)
                                     {
-                                        refine_window_size = 7;
+                                        refine_window_size = maxResizewindowSize;
                                     }
                                     
       
@@ -249,10 +299,9 @@ namespace aslam
                                     tagCorners.at<float>(0,0) = target_image_frame.coeff(0,index_reprojection);
                                     tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
-                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);           
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);    
                                     cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
-                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
                                     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
                                     quads(1,index_reprojection) = tagCorners.at<float>(0,1);
 
@@ -274,13 +323,7 @@ namespace aslam
 
                 }
                 // we delete the corners if they don't have the required number of initial corners to make a good estimation of the pose of the board
-                else
-                {
-                    for (auto corner_idx : outCornerIdx_)
-                    {
-                        new_obslist_[j].removeImagePoint(corner_idx);
-                    }
-                }
+
             }
         }
 

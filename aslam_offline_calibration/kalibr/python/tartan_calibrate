@@ -166,7 +166,6 @@ def parseArgs():
 
 def main():
     parsed = parseArgs()
-    print(parsed.dontShowReport)
     #logging modes
     if parsed.verbose:
         sm.setLoggingLevel(sm.LoggingLevel.Debug)
