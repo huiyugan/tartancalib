@@ -20,7 +20,6 @@ def multicoreExtractionWrapper(detector, taskq, resultq, clearImages, noTransfor
         idx = task[0]
         stamp = task[1]
         image = task[2]
-        
         if noTransformation:
             success, obs = detector.findTargetNoTransformation(stamp, np.array(image))
         else:

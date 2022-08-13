@@ -28,8 +28,7 @@ def parseArgs():
 
 def get_outliers(array, num_stds):
     num_points = np.shape(array)[1]
-    std = np.std(array, 1, dtype=np.float)
-
+    std = np.std(array, 0, dtype=np.float)
     delete_list = []
     for i in range(num_points):
         if (np.abs(array[0,i]) > num_stds*std[0] or np.abs(array[1,i]) > num_stds*std[1]):
@@ -64,13 +63,17 @@ def plotSphericalError(evalObs,evalCams,camNames):
     for i in range(num_evals):
         cam = evalCams[i]
         obslist = evalObs[i]
-        err = cam.getReprojectionErrors(evalObs[i])
+        err = np.array(cam.getReprojectionErrors(evalObs[i]))
+        print("err shape:"+str(np.shape(err)))
+        # delete_idxs = get_outliers(err,4)
+        # err = np.delete(err,delete_idxs,1)
+        num_points = np.shape(err)[0]
+        print("err shape:"+str(np.shape(err)))
         num_points = len(err)
         err = np.transpose(np.reshape(err,(num_points,2)))
         mag_err = np.array([np.linalg.norm(err[:,q]) for q in range(num_points)])
         # remove outliers
-        # delete_idxs = get_outliers(err,4)
-        # err = np.delete(err,delete_idxs,1)
+        
 
         # get polar angles
         img_points_x = np.concatenate([obs.getCornersImageFrame()[:,0] for obs in obslist ])
@@ -123,8 +126,7 @@ def plotSphericalError(evalObs,evalCams,camNames):
 
         # img_points_x = np.delete(img_points_x,delete_idxs)
         # img_points_y = np.delete(img_points_y,delete_idxs)
-        num_points = len(img_points_x)
-
+        print("NUM POINTS: "+str(num_points))
         polars = []
         for j in range(num_points):
             ec_pnt = cam.keypointToEuclidean(np.array([[img_points_x[j]],[img_points_y[j]]])) 
@@ -137,7 +139,7 @@ def plotSphericalError(evalObs,evalCams,camNames):
         err = np.array([np.linalg.norm(err[:,i]) for i in range(num_points)])
         matplotlib.rc('xtick', labelsize=20) 
         matplotlib.rc('ytick', labelsize=20)
-        pl.plot(polars[polar_idxs],np.convolve(err[polar_idxs], np.ones(500)/500, mode='same'))
+        pl.plot(polars[polar_idxs],np.convolve(err[polar_idxs], np.ones(100)/100, mode='same'))
 
 #     print(np.std(np.array(final_err), 1, dtype=np.float))
     pl.legend(camNames,fontsize=20)
@@ -200,7 +202,7 @@ def main():
     
     tartanObs = [log.ObservationDatabase_ for log in tartanObsLog]
     print("obs iteration:"+str(parsed.obs_it))
-    evalObsDb = tartanObs[parsed.obs_it]
+    evalObsDb = tartanObs[int(parsed.obs_it)]
     evalObs = [evalObsDb.observations[int(parsed.camids[i])] for i in range(num_evals)]
 
     evalCams = []

@@ -67,7 +67,7 @@ class ObservationDatabase(object):
         else:
             #we already have a view from this camera on this timestamp --> STH IS WRONG
             sm.logError("[TargetViewTable]: Tried to add second view to a given cameraId & " 
-                        "timestamp. Maybe try to reduce the approximate syncing tolerance..")
+                        "timestamp. Maybe try to reduce the approximate syncing tolerance.. Timestamp is:{0}".format(timestamp))
 
 
 #############################################################

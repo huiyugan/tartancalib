@@ -134,7 +134,7 @@ def parseArgs():
     outputSettings.add_argument('--polar_setting', type=int, default=0, dest='polarSetting', help='The way we are using polar angles of detections to improve results. 0=None, don not use. 1=set an angle threshold, under this threshold no corners will be used. 2 = bins, divide the corners into polar angle bins and give each bin a weight.')
     outputSettings.add_argument('--force_all', action='store_true', dest='forceAll', help='Force all points to be used.')
     outputSettings.add_argument('--log_dest', type=str, dest='logDest',default='log', help='Logging for later analysis.')
-    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=50, help='Logging for later analysis.')
+    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=70, help='Logging for later analysis.')
 
     #print help if no argument is specified
     if len(sys.argv)==1:
@@ -324,10 +324,11 @@ def main():
                     for bidx, baseline in enumerate(calibrator.baselines):
                         est_baselines.append( sm.Transformation(baseline.T()) )
                     T_tc_guess = graph.getTargetPoseGuess(timestamp, cameraList, est_baselines)
-                                
-                    # success = calibrator.addTargetView(obs_tuple, T_tc_guess)
+                    success = False     
                     success = calibrator.addTargetView(obs_tuple, T_tc_guess,parsed.forceAll)
-                    print(success)
+                        
+                    
+
                     #display process
                     if (verbose or (view_id % 25) == 0) and calibrator.estimator.getNumBatches()>0 and view_id>1:
                         print("")
@@ -461,6 +462,7 @@ def main():
                     obslistTartan[cam_id] = new_obs
 
 
+                tartanlogs.append(TartanLogging.TartanLogger(obsdb,[copy.deepcopy(cam_.geometry) for cam_ in calibrator.cameras],kcc.getAllPointStatistics(calibrator,0)))
 
                 #initialize the calibration graph
                 graph = kcc.MulticamCalibrationGraph(obsdb)
@@ -498,7 +500,6 @@ def main():
                 # adding the  observation database to the logs
 
 
-                tartanlogs.append(TartanLogging.TartanLogger(obsdb,[copy.deepcopy(cam_.geometry) for cam_ in calibrator.cameras],kcc.getAllPointStatistics(calibrator,0)))
                 # for log in tartanlogs:
                 #     for cam_ in log.camera_:
                 #         print(cam_.projection().getParameters().flatten())

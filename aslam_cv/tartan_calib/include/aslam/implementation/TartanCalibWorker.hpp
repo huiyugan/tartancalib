@@ -269,7 +269,7 @@ namespace aslam
                                 // norms_reprojection.minCoeff(&index_reprojection);
                                 index_reprojection = quad_idxs[q];
 
-                                norms_target = (target_image_frame_trimmed.colwise() - target_image_frame_trimmed.col(index_reprojection)).colwise().squaredNorm();
+                                norms_target = (target_image_frame.colwise() - target_image_frame.col(index_reprojection)).colwise().squaredNorm();
                                 std::vector<size_t> idx(norms_target.size());
                                 index_target = 0;
                                 
@@ -325,6 +325,7 @@ namespace aslam
                     cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
 
                 }
+
                 // we delete the corners if they don't have the required number of initial corners to make a good estimation of the pose of the board
 
             }
