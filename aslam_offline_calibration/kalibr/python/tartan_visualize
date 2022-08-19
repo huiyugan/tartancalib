@@ -23,6 +23,7 @@ def parseArgs():
     parser.add_argument('-cams_it','--cams_it',nargs='+',required=True,help="Provide the iteration from each pickle you want to use for visualization. E.g. if you want to compare two runs and for each the final trained model, enter -1 -1.")
     parser.add_argument('-cam_names','--cam_names',nargs='+',help="Provide names for all cams to print on the plots.")
     parser.add_argument('-camids','--camids',nargs='+',default=0)
+    parser.add_argument('-nbins','--nbins',required=False,default=100,help="This is the number of bins for ")
 
     return parser.parse_args()
 
@@ -57,7 +58,7 @@ def plotHistograms(evalObs,evalCams,camNames):
 
             # pl.hist(final_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
             # pl.hist(final_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-def plotSphericalError(evalObs,evalCams,camNames):
+def plotSphericalError(evalObs,evalCams,camNames,parsed):
     num_evals = len(evalCams)
 
     for i in range(num_evals):
@@ -133,13 +134,35 @@ def plotSphericalError(evalObs,evalCams,camNames):
             polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
 
         polars = np.array(polars)
+        
+
         polar_idxs = np.argsort(polars)
         print("Stats for {0}, mean: {1}, std:{2}.".format(camNames[i],str(np.mean(np.array(err), 1, dtype=np.float)),str(np.std(np.array(err), 1, dtype=np.float))))
-        
         err = np.array([np.linalg.norm(err[:,i]) for i in range(num_points)])
+
+        polar_min = np.min(polars)
+        polar_max = np.max(polars)
+        bins = np.linspace(polar_min,polar_max,parsed.nbins+1)
+        bin_idxs = np.digitize(polars,bins)-1
+        bin_avg_errs = np.zeros(parsed.nbins)
+        empty_idxs = []
+        full_idxs = []
+        for k in range(parsed.nbins):
+            if len(np.where(bin_idxs==k)[0]!=0):
+                bin_avg_errs[k] = np.mean(err[np.where(bin_idxs==k)])
+                full_idxs.append(k)
+            else:
+                empty_idxs.append(k)
+        
+        bin_avg_errs = np.delete(bin_avg_errs,empty_idxs)
+        print("normal reproj. err:"+str(np.mean(err)))
+        print("spatially normalized: "+str(np.mean(bin_avg_errs)))
+        # pl.hist(bin_avg_errs)
+
         matplotlib.rc('xtick', labelsize=20) 
         matplotlib.rc('ytick', labelsize=20)
-        pl.plot(polars[polar_idxs],np.convolve(err[polar_idxs], np.ones(100)/100, mode='same'))
+        # pl.plot(polars[polar_idxs],np.convolve(err[polar_idxs], np.ones(100)/100, mode='same'))
+        pl.plot([np.mean([bins[q],bins[q+1]]) for q in full_idxs],bin_avg_errs)
 
 #     print(np.std(np.array(final_err), 1, dtype=np.float))
     pl.legend(camNames,fontsize=20)
@@ -221,7 +244,7 @@ def main():
         evalCams.append(camlog_loaded[int(parsed.cams_it[i])].camera_[cam_list[i]])
 
 
-    plotSphericalError(evalObs,evalCams,parsed.cam_names)
+    plotSphericalError(evalObs,evalCams,parsed.cam_names,parsed)
 
     # cams = [log.camera_ for log in tartanlog]
 
