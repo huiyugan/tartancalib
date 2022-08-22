@@ -8,6 +8,16 @@ if(Eigen3_FOUND)
     message(STATUS "EIGEN3_INCLUDE_DIR=${EIGEN3_INCLUDE_DIR}")
 endif()
 
+## libvis
+
+
+
+
+
+find_package(GLEW REQUIRED)
+set( CMAKE_CXX_COMPILE_OPTIONS_PIE "-fPIC" )
+
+
 find_package(Boost REQUIRED COMPONENTS serialization) 
 find_package(OpenMP REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
@@ -26,7 +36,6 @@ find_package(catkin REQUIRED COMPONENTS
   aslam_cameras_april
 )
 
-
 catkin_package(
   INCLUDE_DIRS include
 )
@@ -38,7 +47,7 @@ if(NOT APPLE)
   set(OTHER_LIBS rt)
 endif()
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+
 
 add_library(tartan_calib INTERFACE)
 

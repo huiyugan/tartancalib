@@ -29,6 +29,7 @@
 #include "apriltags/TagDetector.h"
 #include "apriltags/Tag36h11.h"
 #include "implementation/Datasetwriterhelper.hpp"
+#include "implementation/symmetry_refinement.h"
 namespace aslam
 {
     
@@ -262,10 +263,12 @@ namespace aslam
             boost::shared_ptr<AprilTags::TagDetector> tagDetector_;
 
             int minInitCornersAutoComplete = 16; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
-            float minTagSizeAutoComplete = 3; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
-            float correction_threshold = 20.0; // number of pixel offset between reprojection and detection we allow
+            float minTagSizeAutoComplete = 10; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
+            float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
             float minResizewindowSize = 2;
             float maxResizewindowSize = 7;
+
+            bool harris_check = false;
     };
     }
 }

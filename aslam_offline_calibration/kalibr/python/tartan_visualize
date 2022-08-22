@@ -5,7 +5,7 @@ import numpy as np
 import argparse
 import dill
 import matplotlib
-matplotlib.use('pdf')
+# matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import cv2
 import pylab as pl
@@ -24,6 +24,7 @@ def parseArgs():
     parser.add_argument('-cam_names','--cam_names',nargs='+',help="Provide names for all cams to print on the plots.")
     parser.add_argument('-camids','--camids',nargs='+',default=0)
     parser.add_argument('-nbins','--nbins',required=False,default=100,help="This is the number of bins for ")
+    parser.add_argument('-babel_args','--babel_args',nargs='+',default=0)
 
     return parser.parse_args()
 
@@ -60,14 +61,25 @@ def plotHistograms(evalObs,evalCams,camNames):
             # pl.hist(final_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
 def plotSphericalError(evalObs,evalCams,camNames,parsed):
     num_evals = len(evalCams)
+    if(parsed.babel_args != 0):
+        num_evals += 1
 
     for i in range(num_evals):
-        cam = evalCams[i]
-        obslist = evalObs[i]
-        err = np.array(cam.getReprojectionErrors(evalObs[i]))
+        if (i == (num_evals-1) and parsed.babel_args != 0):
+            cam = evalCams[i-1]
+            obslist = evalObs[i-1]
+            err = np.array(cam.getReprojectionErrors(evalObs[i-1]))
+            print("Previous params " + str(cam.projection().getParameters()))
+            babel_float = np.array([float(babel_arg) for babel_arg in parsed.babel_args])
+            cam.projection().setParameters(babel_float)
+            print("Settings to : "+ str(cam.projection().getParameters()))
+        else:
+            cam = evalCams[i]
+            obslist = evalObs[i]
+            err = np.array(cam.getReprojectionErrors(evalObs[i]))
         print("err shape:"+str(np.shape(err)))
-        # delete_idxs = get_outliers(err,4)
-        # err = np.delete(err,delete_idxs,1)
+        delete_idxs = get_outliers(err,4)
+        err = np.delete(err,delete_idxs,1)
         num_points = np.shape(err)[0]
         print("err shape:"+str(np.shape(err)))
         num_points = len(err)
@@ -125,8 +137,8 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
         #             pl.clf()
 
 
-        # img_points_x = np.delete(img_points_x,delete_idxs)
-        # img_points_y = np.delete(img_points_y,delete_idxs)
+        img_points_x = np.delete(img_points_x,delete_idxs)
+        img_points_y = np.delete(img_points_y,delete_idxs)
         print("NUM POINTS: "+str(num_points))
         polars = []
         for j in range(num_points):
@@ -138,7 +150,7 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
 
         polar_idxs = np.argsort(polars)
         print("Stats for {0}, mean: {1}, std:{2}.".format(camNames[i],str(np.mean(np.array(err), 1, dtype=np.float)),str(np.std(np.array(err), 1, dtype=np.float))))
-        err = np.array([np.linalg.norm(err[:,i]) for i in range(num_points)])
+        err = np.array([np.linalg.norm(err[:,q]) for q in range(num_points)])
 
         polar_min = np.min(polars)
         polar_max = np.max(polars)
@@ -163,11 +175,14 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
         matplotlib.rc('ytick', labelsize=20)
         # pl.plot(polars[polar_idxs],np.convolve(err[polar_idxs], np.ones(100)/100, mode='same'))
         pl.plot([np.mean([bins[q],bins[q+1]]) for q in full_idxs],bin_avg_errs)
+        pl.xlabel('Polar Angle', fontsize=20)
+        pl.ylabel('Reprojection Error', fontsize=20)
 
 #     print(np.std(np.array(final_err), 1, dtype=np.float))
     pl.legend(camNames,fontsize=20)
-    pl.savefig(camNames[0]+'.png')
+    # pl.savefig(camNames[0]+'.png')
     pl.show()
+
 
 
 # def get_polars(cams,obsdb):
