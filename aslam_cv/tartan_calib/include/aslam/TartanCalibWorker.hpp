@@ -30,6 +30,7 @@
 #include "apriltags/Tag36h11.h"
 #include "implementation/Datasetwriterhelper.hpp"
 #include "implementation/symmetry_refinement.h"
+
 namespace aslam
 {
     
@@ -268,7 +269,7 @@ namespace aslam
             float minResizewindowSize = 2;
             float maxResizewindowSize = 7;
 
-            bool harris_check = false;
+            bool harris_check = true;
     };
     }
 }

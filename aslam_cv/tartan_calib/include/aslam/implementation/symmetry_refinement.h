@@ -77,7 +77,7 @@ bool RefineFeatureBySymmetry(
   float last_step_squared_norm = numeric_limits<float>::infinity();
   
   if (kDebug) {
-    LOG(INFO) << "Initial pixel_tr_pattern_samples:\n" << pixel_tr_pattern_samples;
+    // LOG(INFO) << "Initial pixel_tr_pattern_samples:\n" << pixel_tr_pattern_samples;
   }
   
   constexpr int kMaxIterationCount = 30;
@@ -87,12 +87,12 @@ bool RefineFeatureBySymmetry(
         pixel_tr_pattern_samples, image, num_samples, pattern_samples,
         &H, &b, &cost)) {
       if (debug || kDebug) {
-        LOG(WARNING) << "Corner refinement failed because a sample was outside the image";
+        // LOG(WARNING) << "Corner refinement failed because a sample was outside the image";
       }
       return false;
     }
     if (kDebug) {
-      LOG(INFO) << "cost: " << cost;
+    //   LOG(INFO) << "cost: " << cost;
     }
     if (final_cost) {
       *final_cost = cost;
@@ -117,7 +117,7 @@ bool RefineFeatureBySymmetry(
 //       Eigen::Matrix<float, kDim, 1> x =
 //           H_LM.cast<double>().completeOrthogonalDecomposition().solve(b.cast<double>()).cast<float>();
       if (kDebug) {
-        LOG(INFO) << "  x in LM iteration " << lm_iteration << ": " << x.transpose();
+        // LOG(INFO) << "  x in LM iteration " << lm_iteration << ": " << x.transpose();
       }
       
       // Test whether the update improves the cost.
@@ -134,13 +134,13 @@ bool RefineFeatureBySymmetry(
       float test_cost;
       if (!CostFunction::ComputeCornerRefinementCost(test_pixel_tr_pattern_samples, image, num_samples, pattern_samples, &test_cost)) {
         if (kDebug) {
-          LOG(INFO) << "  CostFunction::ComputeCornerRefinementCost() failed, aborting.";
+        //   LOG(INFO) << "  CostFunction::ComputeCornerRefinementCost() failed, aborting.";
         }
         return false;
       }
       
       if (kDebug) {
-        LOG(INFO) << "  test_cost: " << test_cost << ", cost: " << cost;
+        // LOG(INFO) << "  test_cost: " << test_cost << ", cost: " << cost;
       }
       
       if (test_cost < cost) {
@@ -164,12 +164,12 @@ bool RefineFeatureBySymmetry(
       out_position->x() = pixel_tr_pattern_samples(0, 2);
       out_position->y() = pixel_tr_pattern_samples(1, 2);
       if (kDebug) {
-        LOG(INFO) << "New position: " << out_position->transpose();
+        // LOG(INFO) << "New position: " << out_position->transpose();
       }
     } else {
       // Cannot find an update that improves the cost. Treat this as converged.
       if (kDebug) {
-        LOG(INFO) << "Cannot find an update to improve the cost. Returning convergence (iteration " << iteration << ").";
+        // LOG(INFO) << "Cannot find an update to improve the cost. Returning convergence (iteration " << iteration << ").";
       }
       return true;
     }
@@ -180,7 +180,7 @@ bool RefineFeatureBySymmetry(
       // The result is probably not the originally intended corner,
       // since it is not within the original search window.
       if (debug || kDebug) {
-        LOG(WARNING) << "Corner refinement failed because the refined position left the original window";
+        // LOG(WARNING) << "Corner refinement failed because the refined position left the original window";
       }
       return false;
     }
@@ -197,14 +197,14 @@ bool RefineFeatureBySymmetry(
   // likely so small that the true (detection) error is dominated by other factors.
   if (last_step_squared_norm < 1e-4f) {
     if (kDebug) {
-      LOG(INFO) << "Number of iterations exceeded, but last update was tiny. Returning convergence.";
+    //   LOG(INFO) << "Number of iterations exceeded, but last update was tiny. Returning convergence.";
     }
     return true;
   }
   
   // No convergence after exceeding the maximum iteration count.
   if (debug || kDebug) {
-    LOG(WARNING) << "Corner refinement failed because the optimization did not converge. last_step_squared_norm: " << last_step_squared_norm;
+    // LOG(WARNING) << "Corner refinement failed because the optimization did not converge. last_step_squared_norm: " << last_step_squared_norm;
   }
   return false;
 }

@@ -46,7 +46,6 @@ set(LIBVIS_FILES
   libvis/src/libvis/timing.cc
   libvis/src/libvis/timing.h
   libvis/src/libvis/util.h
-  libvis/src/libvis/logging.h
   
   ${GENERATED_HEADERS}
   libvis/resources/resources.qrc
@@ -61,6 +60,7 @@ set_property(TARGET libvis PROPERTY FOLDER "libvis")
 # set_property(TARGET libvis PROPERTY FOLDER "libvis")
 include_directories(
   ./libvis/src
+  ./libvis/third_party/loguru/
     include 
     ${catkin_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
@@ -68,12 +68,18 @@ include_directories(
     ${Qt5Core_INCLUDE_DIRS}
 )
 
-add_library(loguru SHARED
-  libvis/third_party/loguru/loguru.cpp
-)
-set_property(TARGET loguru PROPERTY FOLDER "libvis/third_party")
-include_directories(libvis/third_party/loguru/)
+# add_library(loguru SHARED
+#   libvis/third_party/loguru/loguru.cpp
+# )
+# set_property(TARGET loguru PROPERTY FOLDER "libvis/third_party")
+# include_directories(libvis/third_party/loguru/)
 
+# set_target_properties(loguru PROPERTIES
+#   POSITION_INDEPENDENT_CODE ON
+# )
+# target_compile_definitions(loguru PRIVATE
+#   LOGURU_WITH_STREAMS
+# )
 
 find_package(Boost REQUIRED COMPONENTS serialization) 
 find_package(catkin REQUIRED COMPONENTS

@@ -1,3 +1,4 @@
+
 constexpr const auto PI = boost::math::constants::pi<double>();
 namespace plt = matplotlibcpp;
 namespace aslam
@@ -303,53 +304,91 @@ namespace aslam
                                     tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);    
-                                    cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
+                                    // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
                                     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
                                     quads(1,index_reprojection) = tagCorners.at<float>(0,1);
 
-                                    if (harris_check)
+                                    if (true)
                                     {
-                                        // harris
-                                        // int blockSize = static_cast<int>(refine_window_size*2+1);
-                                        // int apertureSize = blockSize;
+                                        int num_samples = 10;
+                                        int window_half_size = 5; 
+                                        vis::Vec2f* out_position;
+                                        vis::Mat3f pattern_to_pixel = vis::Mat3f::Identity();
+                                        vis::Mat3f pixel_to_pattern = vis::Mat3f::Identity();
+                                        
+                                        vis::Image<double> vis_image;
+                                        vis_image.SetSize(1028,1224);
+
+                                        // cv::Mat flat = image.reshape(1, image.total()*image.channels());
+                                        Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(1028 , 1224);
+                                        cv::cv2eigen(img_gray,eigen_mat);
+                                        double *array = eigen_mat.data();
+                                        vis_image.SetTo(array);
+
+                                        float* final_cost;
+
+                                        std::vector<vis::Vec2f> samples;
+                                        for (int samp_num = 0; samp_num <num_samples; samp_num++)
+                                        {
+                                            samples[samp_num] = vis::Vec2f::Random();
+                                        }
+                                        vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+
+                                        bool debug = false;
+                                        bool succes = vis::RefineFeatureBySymmetry<vis::SymmetryCostFunction_SingleChannel>(
+                                        num_samples,
+                                        samples,
+                                        vis_image,
+                                        window_half_size,
+                                        start_position,
+                                        pattern_to_pixel,
+                                        pixel_to_pattern,
+                                        out_position,
+                                        final_cost,
+                                        debug);
+
+
+                                        // // harris
+                                        // // int blockSize = static_cast<int>(refine_window_size*2+1);
+                                        // // int apertureSize = blockSize;
                                         
 
-                                        // double k = 0.04;
-                                        cv::Mat src = new_obslist_[j].image();
-                                        // cv::Mat dst = cv::Mat::zeros( src.size(), CV_32FC1 );
-                                        // cv::cornerHarris( src, dst, blockSize, apertureSize, k );
+                                        // // double k = 0.04;
+                                        // cv::Mat src = new_obslist_[j].image();
+                                        // // cv::Mat dst = cv::Mat::zeros( src.size(), CV_32FC1 );
+                                        // // cv::cornerHarris( src, dst, blockSize, apertureSize, k );
 
-                                        // cv::Mat dst_norm, dst_norm_scaled;
-                                        // cv::normalize( dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat() );
-                                        // cv::convertScaleAbs( dst_norm, dst_norm_scaled );
+                                        // // cv::Mat dst_norm, dst_norm_scaled;
+                                        // // cv::normalize( dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat() );
+                                        // // cv::convertScaleAbs( dst_norm, dst_norm_scaled );
 
-                                        // cv::imshow("test",dst_norm_scaled);
-                                        // cv::waitKey(2000);
+                                        // // cv::imshow("test",dst_norm_scaled);
+                                        // // cv::waitKey(2000);
 
-                                        // gradient direction
-                                        cv::Mat img_blurred;
-                                        // cv::GaussianBlur(src, img_blurred, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
-                                        img_blurred = src;
-                                        cv::Mat grad_x, grad_y,grad_phase,grad_phase_normalized,grad_phase_normalized_;
-                                        // Mat abs_grad_x, abs_grad_y;
-                                        cv::Sobel(img_blurred, grad_x, CV_32FC1, 1,0,1);
-                                        cv::Sobel(img_blurred, grad_y, CV_32FC1, 0,1,1);
-                                        cv::phase(grad_x,grad_y,grad_phase, false);
-                                        float arrow_size = 10;
+                                        // // gradient direction
+                                        // cv::Mat img_blurred;
+                                        // // cv::GaussianBlur(src, img_blurred, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
+                                        // img_blurred = src;
+                                        // cv::Mat grad_x, grad_y,grad_phase,grad_phase_normalized,grad_phase_normalized_;
+                                        // // Mat abs_grad_x, abs_grad_y;
+                                        // cv::Sobel(img_blurred, grad_x, CV_32FC1, 1,0,1);
+                                        // cv::Sobel(img_blurred, grad_y, CV_32FC1, 0,1,1);
+                                        // cv::phase(grad_x,grad_y,grad_phase, false);
+                                        // float arrow_size = 10;
 
 
-                                        cv::Point start_point(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
-                                        cv::Point end_point(start_point.x+arrow_size*cos(grad_phase.at<float>(start_point.x,start_point.y)),start_point.y+arrow_size*sin(grad_phase.at<float>(start_point.x,start_point.y)));
-                                        cv::arrowedLine(img_color,start_point,end_point,cv::Scalar(0,255,0));
+                                        // cv::Point start_point(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                        // cv::Point end_point(start_point.x+arrow_size*cos(grad_phase.at<float>(start_point.x,start_point.y)),start_point.y+arrow_size*sin(grad_phase.at<float>(start_point.x,start_point.y)));
+                                        // cv::arrowedLine(img_color,start_point,end_point,cv::Scalar(0,255,0));
                                             
                                         
-                                        cv::normalize(grad_phase,grad_phase_normalized,0,255,cv::NORM_MINMAX, CV_32FC1, cv::Mat());
-                                        cv::convertScaleAbs( grad_phase_normalized, grad_phase_normalized_ );
+                                        // cv::normalize(grad_phase,grad_phase_normalized,0,255,cv::NORM_MINMAX, CV_32FC1, cv::Mat());
+                                        // cv::convertScaleAbs( grad_phase_normalized, grad_phase_normalized_ );
 
-                                        // cv::imshow("test",grad_phase_normalized_);
-                                        cv::imwrite("grad_phase.png",grad_phase_normalized_);
-                                        // cv::waitKey(20000);
+                                        // // cv::imshow("test",grad_phase_normalized_);
+                                        // cv::imwrite("grad_phase.png",grad_phase_normalized_);
+                                        // // cv::waitKey(20000);
 
                                     } 
 

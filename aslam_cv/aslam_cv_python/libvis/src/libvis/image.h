@@ -617,15 +617,15 @@ class Image {
           // The alignment argument was not a power of two, or was not a multiple of
           // sizeof(void*).
           // TODO
-          LOG(FATAL) << "return_value == EINVAL";
+          // LOG(FATAL) << "return_value == EINVAL";
         } else if (errno == ENOMEM) {
           // There was insufficient memory to fulfill the allocation request.
           // TODO
-          LOG(FATAL) << "return_value == ENOMEM";
+          // LOG(FATAL) << "return_value == ENOMEM";
         } else {
           // Unknown error.
           // TODO
-          LOG(FATAL) << "Unknown error";
+          // LOG(FATAL) << "Unknown error";
         }
       }
 #else
@@ -637,15 +637,15 @@ class Image {
           // The alignment argument was not a power of two, or was not a multiple of
           // sizeof(void*).
           // TODO
-          LOG(FATAL) << "return_value == EINVAL";
+          // LOG(FATAL) << "return_value == EINVAL";
         } else if (return_value == ENOMEM) {
           // There was insufficient memory to fulfill the allocation request.
           // TODO
-          LOG(FATAL) << "return_value == ENOMEM";
+          // LOG(FATAL) << "return_value == ENOMEM";
         } else {
           // Unknown error.
           // TODO
-          LOG(FATAL) << "Unknown error";
+          // LOG(FATAL) << "Unknown error";
         }
       }
 #endif // !WIN32
