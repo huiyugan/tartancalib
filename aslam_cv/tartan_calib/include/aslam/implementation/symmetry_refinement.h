@@ -48,17 +48,14 @@ bool RefineFeatureBySymmetry(
     float* final_cost,
     bool debug) {
   constexpr bool kDebug = false;
-  
   Vec2f original_position = position;
   *out_position = position;
-  
   // Transform the samples from pixel space to pattern space (with (0, 0) being
   // the feature whose position is estimated) using the initial homography estimate.
   vector<Vec2f> pattern_samples(samples.size());
   for (usize i = 0; i < samples.size(); ++ i) {
     pattern_samples[i] = Vec3f(local_pattern_tr_pixel * (window_half_size * samples[i]).homogeneous()).hnormalized();
   }
-  
   // Optimize the homography locally that maps the local pattern coordinates to
   // the pixel coordinates.
   Mat3f pixel_tr_pattern_samples = local_pixel_tr_pattern;
@@ -68,7 +65,6 @@ bool RefineFeatureBySymmetry(
   pixel_tr_pattern_samples = local_to_global_mapping * pixel_tr_pattern_samples;
   // Normalize pixel_tr_pattern_samples such that its bottom-right element is one.
   pixel_tr_pattern_samples /= pixel_tr_pattern_samples(2, 2);
-  
   constexpr int kDim = 8;
   Matrix<float, kDim, kDim> H;
   Matrix<float, kDim, 1> b;
@@ -111,6 +107,7 @@ bool RefineFeatureBySymmetry(
       
       // Solve for the update.
       // NOTE: Not sure if using double is helpful here
+      
       Eigen::Matrix<float, kDim, 1> x = H_LM.cast<double>().selfadjointView<Eigen::Upper>().ldlt().solve(b.cast<double>()).cast<float>();
 //       // TEST: use pseudoinverse to ensure Gauge fixing
 //       H_LM.template triangularView<Eigen::Lower>() = H_LM.template triangularView<Eigen::Upper>().transpose();
@@ -382,6 +379,7 @@ struct SymmetryCostFunction_GradientsXY {
       float weight = 1;
       
       Matrix<float, 1, 8> jacobian_weighted = weight * jacobian.row(0);
+
       H->triangularView<Eigen::Upper>() += jacobian.row(0).transpose() * jacobian_weighted;
       *b += residual(0) * jacobian_weighted;
       

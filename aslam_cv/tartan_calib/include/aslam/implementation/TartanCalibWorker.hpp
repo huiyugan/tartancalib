@@ -178,7 +178,6 @@ namespace aslam
             
             for (int j=0; j<num_frames_; j++)
             {
-                
                 cv::Mat img_gray = reprojection.obslist_[j].image();
                 cv::Mat img_color;
                 cv::cvtColor(img_gray,img_color,cv::COLOR_GRAY2BGR); //convert to color to be able to plot colored dots
@@ -211,17 +210,16 @@ namespace aslam
                     // retrieve predicted 
                     sm::kinematics::Transformation out_T_t_c;
                     camera_->estimateTransformation(reprojection.obslist_[j],out_T_t_c);
-                    Eigen::Matrix4d T = out_T_t_c.T().inverse();                 
+                    Eigen::Matrix4d T = out_T_t_c.T().inverse();    
                     all_target_transformed = T*all_target_original;
-
                     int num_target_corners = all_target_transformed.cols();
                     int num_target_corners_trimmed = num_target_corners-4;
                     int num_quads = quads.cols()/4;
 
                     cv::Point2f pixel;
                     Eigen::MatrixXd target_image_frame(2,num_target_corners), target_image_frame_trimmed(2,num_target_corners);
-                    cv::Mat tagCorners(1, 2, CV_32F);
 
+                    cv::Mat tagCorners(1, 2, CV_32F);
                     for (int i=0; i< num_target_corners; i++)
                     {
                         camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
@@ -316,8 +314,10 @@ namespace aslam
                                         vis::Vec2f* out_position;
                                         vis::Mat3f pattern_to_pixel = vis::Mat3f::Identity();
                                         vis::Mat3f pixel_to_pattern = vis::Mat3f::Identity();
-                                        
+                                        pattern_to_pixel = T.block<3,3>(0,0).cast<float>();
+                                        pixel_to_pattern = out_T_t_c.T().block<3,3>(0,0).cast<float>();
                                         vis::Image<double> vis_image;
+                                        
                                         vis_image.SetSize(1028,1224);
 
                                         // cv::Mat flat = image.reshape(1, image.total()*image.channels());
@@ -325,13 +325,12 @@ namespace aslam
                                         cv::cv2eigen(img_gray,eigen_mat);
                                         double *array = eigen_mat.data();
                                         vis_image.SetTo(array);
-
                                         float* final_cost;
 
                                         std::vector<vis::Vec2f> samples;
                                         for (int samp_num = 0; samp_num <num_samples; samp_num++)
                                         {
-                                            samples[samp_num] = vis::Vec2f::Random();
+                                            samples.push_back(vis::Vec2f::Random());
                                         }
                                         vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
 
@@ -344,10 +343,9 @@ namespace aslam
                                         start_position,
                                         pattern_to_pixel,
                                         pixel_to_pattern,
-                                        out_position,
+                                        &start_position,
                                         final_cost,
                                         debug);
-
 
                                         // // harris
                                         // // int blockSize = static_cast<int>(refine_window_size*2+1);
