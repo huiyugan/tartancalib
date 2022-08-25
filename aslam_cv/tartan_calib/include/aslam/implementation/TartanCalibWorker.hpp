@@ -223,7 +223,7 @@ namespace aslam
                     for (int i=0; i< num_target_corners; i++)
                     {
                         camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
-                        cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,0,0),2);    
+                        // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,0,0),2);    
                         target_image_frame.col(i) = distorted_pixel_location_;
                     }
                     target_image_frame_trimmed = target_image_frame;
@@ -301,7 +301,7 @@ namespace aslam
                                     tagCorners.at<float>(0,0) = target_image_frame.coeff(0,index_reprojection);
                                     tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
-                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,0,255),2);    
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
                                     // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
                                     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
@@ -314,10 +314,8 @@ namespace aslam
                                         vis::Vec2f* out_position;
                                         vis::Mat3f pattern_to_pixel = vis::Mat3f::Identity();
                                         vis::Mat3f pixel_to_pattern = vis::Mat3f::Identity();
-                                        pattern_to_pixel = T.block<3,3>(0,0).cast<float>();
                                         pixel_to_pattern = out_T_t_c.T().block<3,3>(0,0).cast<float>();
                                         vis::Image<double> vis_image;
-                                        
                                         vis_image.SetSize(1028,1224);
 
                                         // cv::Mat flat = image.reshape(1, image.total()*image.channels());
@@ -335,6 +333,29 @@ namespace aslam
                                         vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
 
                                         bool debug = false;
+
+                                        // creating the homography between target and pixel coordinates
+                                        std::vector<cv::Point2f> pixel_points = {
+                                        cv::Point2f(start_position.x(),start_position.y()),
+                                        cv::Point2f(start_position.x()-window_half_size,start_position.y()-window_half_size),
+                                        cv::Point2f(start_position.x()-window_half_size,start_position.y()+window_half_size),
+                                        cv::Point2f(start_position.x()+window_half_size,start_position.y()+window_half_size),
+                                        cv::Point2f(start_position.x()+window_half_size,start_position.y()-window_half_size),
+                                        };
+                                        std::vector<cv::Point2f> target_points;
+
+                                        for (auto pixel_point : pixel_points)
+                                        {
+                                            Eigen::Vector3d euc_point;
+                                            Eigen::Vector2d image_point;
+                                            image_point << pixel_point.x  , pixel_point.y ;
+                                            camera_->vsKeypointToEuclidean(image_point,euc_point);
+                                            Eigen::Vector4d euc_h;
+                                            euc_h << euc_point, 1.0;
+                                            Eigen::VectorXd target_point = out_T_t_c.T()*euc_h; 
+                                            target_points.push_back(cv::Point2f(target_point(0),target_point(1)));
+                                        }
+
                                         bool succes = vis::RefineFeatureBySymmetry<vis::SymmetryCostFunction_SingleChannel>(
                                         num_samples,
                                         samples,
@@ -345,7 +366,10 @@ namespace aslam
                                         pixel_to_pattern,
                                         &start_position,
                                         final_cost,
-                                        debug);
+                                        debug,
+                                        camera_                                        
+                                        );
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);    
 
                                         // // harris
                                         // // int blockSize = static_cast<int>(refine_window_size*2+1);

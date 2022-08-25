@@ -35,7 +35,7 @@
 namespace vis {
 
 // The positions are specified in pixel-center origin convention.
-template <typename CostFunction, typename T, typename Derived>
+template <typename CostFunction, typename T, typename Derived, typename C>
 bool RefineFeatureBySymmetry(
     int num_samples,
     const vector<Vec2f>& samples,
@@ -46,7 +46,9 @@ bool RefineFeatureBySymmetry(
     const Mat3f& local_pixel_tr_pattern,
     Vec2f* out_position,
     float* final_cost,
-    bool debug) {
+    bool debug,
+    const C* camera
+    ) {
   constexpr bool kDebug = false;
   Vec2f original_position = position;
   *out_position = position;
@@ -88,7 +90,7 @@ bool RefineFeatureBySymmetry(
       return false;
     }
     if (kDebug) {
-    //   LOG(INFO) << "cost: " << cost;
+      SM_INFO_STREAM("cost: " << cost);
     }
     if (final_cost) {
       *final_cost = cost;
