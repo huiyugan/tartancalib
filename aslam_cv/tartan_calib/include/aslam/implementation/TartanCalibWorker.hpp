@@ -309,7 +309,7 @@ namespace aslam
 
                                     if (true)
                                     {
-                                        int num_samples = 10;
+                                        int num_samples = 800;
                                         int window_half_size = 5; 
                                         vis::Vec2f* out_position;
                                         vis::Mat3f pattern_to_pixel = vis::Mat3f::Identity();
@@ -355,21 +355,31 @@ namespace aslam
                                             Eigen::VectorXd target_point = out_T_t_c.T()*euc_h; 
                                             target_points.push_back(cv::Point2f(target_point(0),target_point(1)));
                                         }
+                                        cv::Mat pattern_to_pixel_mat =   cv::findHomography(target_points,pixel_points);
+                                        if (!pattern_to_pixel_mat.empty())
+                                        {
+                                            Eigen::MatrixXf eigen_H = Eigen::MatrixXf(3 , 3);
+                                            cv::cv2eigen(pattern_to_pixel_mat,eigen_H);
+                                            pattern_to_pixel = eigen_H;
+                                            pixel_to_pattern = pattern_to_pixel.inverse();
 
-                                        bool succes = vis::RefineFeatureBySymmetry<vis::SymmetryCostFunction_SingleChannel>(
-                                        num_samples,
-                                        samples,
-                                        vis_image,
-                                        window_half_size,
-                                        start_position,
-                                        pattern_to_pixel,
-                                        pixel_to_pattern,
-                                        &start_position,
-                                        final_cost,
-                                        debug,
-                                        camera_                                        
-                                        );
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);    
+                                            bool succes = vis::RefineFeatureBySymmetry<vis::SymmetryCostFunction_SingleChannel>(
+                                            num_samples,
+                                            samples,
+                                            vis_image,
+                                            window_half_size,
+                                            start_position,
+                                            pattern_to_pixel,
+                                            pixel_to_pattern,
+                                            &start_position,
+                                            final_cost,
+                                            debug,
+                                            camera_,
+                                            img_gray                                        
+                                            );
+                                            cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
+                                        }
+                                         
 
                                         // // harris
                                         // // int blockSize = static_cast<int>(refine_window_size*2+1);

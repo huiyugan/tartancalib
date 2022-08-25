@@ -31,9 +31,9 @@
 
 #include <memory>
 
-#ifdef LIBVIS_HAVE_OPENCV
+// #ifdef LIBVIS_HAVE_OPENCV
   #include <opencv2/core/core.hpp>
-#endif
+// #endif
 
 #include "libvis/logging.h"
 
@@ -1569,15 +1569,13 @@ class Image {
 #endif
 
 
-#ifdef LIBVIS_HAVE_OPENCV
   // TODO: Version of WrapInCVMat() with automatic choice of type
   
   // Overload of WrapInCVMat() which allows to specify the OpenCV type to
   // be used.
-  cv::Mat WrapInCVMat(int type) {
+  cv::Mat WrapInCVMat(int type)  {
     return cv::Mat(height(), width(), type, reinterpret_cast<void*>(data()), stride());
   }
-#endif
   
   
 //   // Displays the image in a debug window.

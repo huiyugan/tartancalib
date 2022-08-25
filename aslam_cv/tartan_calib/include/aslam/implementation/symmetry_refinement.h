@@ -47,7 +47,8 @@ bool RefineFeatureBySymmetry(
     Vec2f* out_position,
     float* final_cost,
     bool debug,
-    const C* camera
+    const C* camera,
+    cv::Mat cv_image
     ) {
   constexpr bool kDebug = false;
   Vec2f original_position = position;
@@ -83,7 +84,7 @@ bool RefineFeatureBySymmetry(
     float cost;
     if (!CostFunction::ComputeCornerRefinementCostAndJacobian(
         pixel_tr_pattern_samples, image, num_samples, pattern_samples,
-        &H, &b, &cost)) {
+        &H, &b, &cost,cv_image)) {
       if (debug || kDebug) {
         // LOG(WARNING) << "Corner refinement failed because a sample was outside the image";
       }
@@ -255,7 +256,8 @@ struct SymmetryCostFunction_GradientsXY {
       const vector<Vec2f>& pattern_samples,
       Matrix<float, 8, 8>* H,
       Matrix<float, 8, 1>* b,
-      float* out_cost) {
+      float* out_cost,
+      cv::Mat cv_image) {
     H->triangularView<Eigen::Upper>().setZero();
     b->setZero();
     *out_cost = 0;
@@ -442,16 +444,19 @@ struct SymmetryCostFunction_SingleChannel {
       const vector<Vec2f>& pattern_samples,
       Matrix<float, 8, 8>* H,
       Matrix<float, 8, 1>* b,
-      float* out_cost) {
+      float* out_cost,
+      cv::Mat cv_image) {
     H->triangularView<Eigen::Upper>().setZero();
     b->setZero();
     *out_cost = 0;
     
+    // image.WrapInCVMat(CV_32F);
     for (int i = 0; i < num_samples; ++ i) {
       const Vec2f& sample = pattern_samples[i];
       
       // Get sample in one direction
       Vec2f sample_pos = Vec3f(pixel_tr_pattern_samples * sample.homogeneous()).hnormalized();
+      cv::circle(cv_image, cv::Point2f(sample_pos.x(),sample_pos.y()),0, cv::Scalar(0,255,0),2);   
       if (!image.ContainsPixelCenterConv(sample_pos)) {
         *out_cost = numeric_limits<float>::infinity();
         return false;
@@ -463,6 +468,9 @@ struct SymmetryCostFunction_SingleChannel {
       
       // Get sample in opposite direction
       sample_pos = Vec3f(pixel_tr_pattern_samples * (-1 * sample).homogeneous()).hnormalized();
+      cv::imshow("test",cv_image);
+      cv::waitKey(20000);
+      cv::circle(cv_image, cv::Point2f(sample_pos.x(),sample_pos.y()),0, cv::Scalar(0,255,0),2); 
       if (!image.ContainsPixelCenterConv(sample_pos)) {
         *out_cost = numeric_limits<float>::infinity();
         return false;
