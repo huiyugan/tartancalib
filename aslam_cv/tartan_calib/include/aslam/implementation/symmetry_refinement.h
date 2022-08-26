@@ -449,18 +449,21 @@ struct SymmetryCostFunction_SingleChannel {
     H->triangularView<Eigen::Upper>().setZero();
     b->setZero();
     *out_cost = 0;
-    
+    cv::Mat img_cpy;
     // image.WrapInCVMat(CV_32F);
     for (int i = 0; i < num_samples; ++ i) {
+      img_cpy = cv_image.clone();
       const Vec2f& sample = pattern_samples[i];
-      
+      // SM_INFO_STREAM("Sample number "<<i);
       // Get sample in one direction
       Vec2f sample_pos = Vec3f(pixel_tr_pattern_samples * sample.homogeneous()).hnormalized();
-      cv::circle(cv_image, cv::Point2f(sample_pos.x(),sample_pos.y()),0, cv::Scalar(0,255,0),2);   
+      // SM_INFO_STREAM("Sample pose "<<sample_pos);
+      cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2);   
       if (!image.ContainsPixelCenterConv(sample_pos)) {
         *out_cost = numeric_limits<float>::infinity();
         return false;
       }
+      
       
       float intensity_a;
       Matrix<float, 1, 2> gradient_a;
@@ -468,9 +471,15 @@ struct SymmetryCostFunction_SingleChannel {
       
       // Get sample in opposite direction
       sample_pos = Vec3f(pixel_tr_pattern_samples * (-1 * sample).homogeneous()).hnormalized();
-      cv::imshow("test",cv_image);
-      cv::waitKey(20000);
-      cv::circle(cv_image, cv::Point2f(sample_pos.x(),sample_pos.y()),0, cv::Scalar(0,255,0),2); 
+      // SM_INFO_STREAM("Sample pose "<<sample_pos);
+      
+      cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2); 
+
+      cv::imwrite("symmetry_test.png",img_cpy);
+      // cv::imshow("test",img_cpy);
+      // cv::waitKey(20000);
+
+
       if (!image.ContainsPixelCenterConv(sample_pos)) {
         *out_cost = numeric_limits<float>::infinity();
         return false;

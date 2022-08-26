@@ -303,18 +303,141 @@ namespace aslam
 
                                     cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
                                     // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
-                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),refine_window_size, cv::Scalar(0,255,0),2);   
+                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(255,0,0),2);   
                                     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
                                     quads(1,index_reprojection) = tagCorners.at<float>(0,1);
 
                                     if (true)
                                     {
-                                        int num_samples = 800;
-                                        int window_half_size = 5; 
-                                        vis::Vec2f* out_position;
-                                        vis::Mat3f pattern_to_pixel = vis::Mat3f::Identity();
-                                        vis::Mat3f pixel_to_pattern = vis::Mat3f::Identity();
-                                        pixel_to_pattern = out_T_t_c.T().block<3,3>(0,0).cast<float>();
+                                        // ORIGINAL SYMMETRY REFINEMENT
+                                        // int num_samples = 50;
+                                        // int window_half_size = refine_window_size; 
+                                        // vis::Vec2f* out_position;
+                                        // vis::Mat3f pattern_to_pixel = vis::Mat3f::Identity();
+                                        // vis::Mat3f pixel_to_pattern = vis::Mat3f::Identity();
+                                        // pixel_to_pattern = out_T_t_c.T().block<3,3>(0,0).cast<float>();
+                                        // vis::Image<double> vis_image;
+                                        // vis_image.SetSize(1028,1224);
+
+                                        // // cv::Mat flat = image.reshape(1, image.total()*image.channels());
+                                        // Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(1028 , 1224);
+                                        // cv::cv2eigen(img_gray,eigen_mat);
+                                        // double *array = eigen_mat.data();
+                                        // vis_image.SetTo(array);
+                                        // float* final_cost;
+
+                                        // std::vector<vis::Vec2f> samples;
+                                        // for (int samp_num = 0; samp_num <num_samples; samp_num++)
+                                        // {
+                                        //     samples.push_back(vis::Vec2f::Random());
+                                        // }
+                                        // vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+
+                                        // bool debug = false;
+                                        // int num_homography_samples = 100;
+                                        // std::vector<cv::Point2f> pixel_points;
+                                        // for (int h_count = 0; h_count < num_homography_samples; h_count++)
+                                        // {
+                                        //     vis::Vec2f rand_vector = vis::Vec2f::Random();
+                                        //     pixel_points.push_back(cv::Point2f(rand_vector(0)*window_half_size+start_position.x(),rand_vector(1)*window_half_size+start_position.y()));
+                                        // }
+                                        // creating the homography between target and pixel coordinates
+                                        // std::vector<cv::Point2f> pixel_points = {
+                                        // cv::Point2f(start_position.x(),start_position.y()),
+                                        // cv::Point2f(start_position.x()-window_half_size,start_position.y()-window_half_size),
+                                        // cv::Point2f(start_position.x()-window_half_size,start_position.y()+window_half_size),
+                                        // cv::Point2f(start_position.x()+window_half_size,start_position.y()+window_half_size),
+                                        // cv::Point2f(start_position.x()+window_half_size,start_position.y()-window_half_size),
+                                        // };
+                                        // std::vector<cv::Point2f> target_points;
+
+                                        // for (auto pixel_point : pixel_points)
+                                        // {
+                                        //     Eigen::Vector3d euc_point;
+                                        //     Eigen::Vector2d image_point;
+                                        //     image_point << pixel_point.x  , pixel_point.y ;
+                                        //     camera_->vsKeypointToEuclidean(image_point,euc_point);
+                                        //     Eigen::Vector4d euc_h;
+                                        //     euc_h << euc_point, 1.0;
+                                        //     Eigen::VectorXd target_point = out_T_t_c.T()*euc_h; 
+                                        //     target_points.push_back(cv::Point2f(target_point(0),target_point(1)));
+                                        //     // SM_INFO_STREAM("Target point: "<<target_point);
+                                        // }
+                                        // for (int r = 1; r < target_points.size(); r++)
+                                        // {
+                                        //     target_points[r].x -= target_points[0].x;
+                                        //     target_points[r].y -= target_points[0].y;
+                                        // }
+                                        // target_points[0].x = 0.0;
+                                        // target_points[0].y = 0.0;
+       
+
+                                        // cv::Mat pattern_to_pixel_mat =   cv::findHomography(target_points,pixel_points);
+                                        
+                                        // if (!pattern_to_pixel_mat.empty())
+                                        // {
+                                        //     Eigen::MatrixXf eigen_H = Eigen::MatrixXf(3 , 3);
+                                        //     cv::cv2eigen(pattern_to_pixel_mat,eigen_H);
+                                            
+                                        //     for (int r = 0; r < target_points.size(); r++)
+                                        //     {
+                                        //         Eigen::Vector3d target_point = Eigen::Vector3d(target_points[r].x,target_points[r].y,1.0);
+                                        //         Eigen::VectorXd image_target_point = eigen_H.cast<double>() *target_point ;
+                                        //         cv::circle(img_color, cv::Point2f(image_target_point(0),image_target_point(1)),3, cv::Scalar(255,255,255),2);   
+                                        //     }
+
+
+                                        //     pattern_to_pixel = eigen_H;
+                                        //     pixel_to_pattern = pattern_to_pixel.inverse();
+
+                                        //     bool succes = vis::RefineFeatureByTartan<vis::SymmetryCostFunction_SingleChannel>(
+                                        //     num_samples,
+                                        //     samples,
+                                        //     vis_image,
+                                        //     window_half_size,
+                                        //     start_position,
+                                        //     pattern_to_pixel,
+                                        //     pixel_to_pattern,
+                                        //     &start_position,
+                                        //     final_cost,
+                                        //     debug,
+                                        //     camera_,
+                                        //     img_color                                        
+                                        //     );
+                                        //     cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
+                                        // }
+
+                                        // TARTAN REFINEMENT: REGRESS MODEL DIRECTLY
+                                        // we get a number of 3D points that is then used to regress the camera model on
+                                        int num_samples = 10; // in reality we evalute 2X this number of points, also its symmetric version
+                                        float half_window_size = 5;
+                                        std::vector<std::vector<Eigen::VectorXd>> samples_pointcloud;
+                                        Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
+                                        float target_scale_factor = 0.5;
+
+                                        for (int sample_it = 0; sample_it < num_samples; sample_it++)
+                                        {
+                                            // step 1: get sample in target space
+                                            Eigen::VectorXd random_vector = Eigen::Vector2d::Random();
+                                            Eigen::VectorXd random_vector_minus = -random_vector;
+
+                                            random_vector(0) *= target_scale_factor*min_delta_x;
+                                            random_vector(1) *= target_scale_factor*min_delta_x;
+
+                                            random_vector_minus(0) *= target_scale_factor*min_delta_x;
+                                            random_vector_minus(1) *= target_scale_factor*min_delta_x;
+
+                                            // samples in target frame
+                                            Eigen::VectorXd sample_target_frame = start_target_frame + random_vector;
+                                            Eigen::VectorXd sample_target_frame_minus = start_target_frame + random_vector_minus;
+
+                                            // samples in 3D space
+                                            Eigen::VectorXd sample_3D = T*sample_target_frame;
+                                            Eigen::VectorXd sample_3D_minus = T*sample_target_frame_minus;
+                                            // add to refinement input
+                                            samples_pointcloud.push_back(std::vector<Eigen::VectorXd>({sample_3D,sample_3D_minus}));
+
+                                        }
                                         vis::Image<double> vis_image;
                                         vis_image.SetSize(1028,1224);
 
@@ -324,103 +447,27 @@ namespace aslam
                                         double *array = eigen_mat.data();
                                         vis_image.SetTo(array);
                                         float* final_cost;
-
-                                        std::vector<vis::Vec2f> samples;
-                                        for (int samp_num = 0; samp_num <num_samples; samp_num++)
-                                        {
-                                            samples.push_back(vis::Vec2f::Random());
-                                        }
                                         vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
-
                                         bool debug = false;
 
-                                        // creating the homography between target and pixel coordinates
-                                        std::vector<cv::Point2f> pixel_points = {
-                                        cv::Point2f(start_position.x(),start_position.y()),
-                                        cv::Point2f(start_position.x()-window_half_size,start_position.y()-window_half_size),
-                                        cv::Point2f(start_position.x()-window_half_size,start_position.y()+window_half_size),
-                                        cv::Point2f(start_position.x()+window_half_size,start_position.y()+window_half_size),
-                                        cv::Point2f(start_position.x()+window_half_size,start_position.y()-window_half_size),
-                                        };
-                                        std::vector<cv::Point2f> target_points;
+                                        // create point cloud sample points, we will use this point cloud to regress the camera model
+                                        // for (int sample_it = 0; sample_it < num_samples)
 
-                                        for (auto pixel_point : pixel_points)
-                                        {
-                                            Eigen::Vector3d euc_point;
-                                            Eigen::Vector2d image_point;
-                                            image_point << pixel_point.x  , pixel_point.y ;
-                                            camera_->vsKeypointToEuclidean(image_point,euc_point);
-                                            Eigen::Vector4d euc_h;
-                                            euc_h << euc_point, 1.0;
-                                            Eigen::VectorXd target_point = out_T_t_c.T()*euc_h; 
-                                            target_points.push_back(cv::Point2f(target_point(0),target_point(1)));
-                                        }
-                                        cv::Mat pattern_to_pixel_mat =   cv::findHomography(target_points,pixel_points);
-                                        if (!pattern_to_pixel_mat.empty())
-                                        {
-                                            Eigen::MatrixXf eigen_H = Eigen::MatrixXf(3 , 3);
-                                            cv::cv2eigen(pattern_to_pixel_mat,eigen_H);
-                                            pattern_to_pixel = eigen_H;
-                                            pixel_to_pattern = pattern_to_pixel.inverse();
-
-                                            bool succes = vis::RefineFeatureBySymmetry<vis::SymmetryCostFunction_SingleChannel>(
-                                            num_samples,
-                                            samples,
-                                            vis_image,
-                                            window_half_size,
-                                            start_position,
-                                            pattern_to_pixel,
-                                            pixel_to_pattern,
-                                            &start_position,
-                                            final_cost,
-                                            debug,
-                                            camera_,
-                                            img_gray                                        
-                                            );
-                                            cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
-                                        }
-                                         
-
-                                        // // harris
-                                        // // int blockSize = static_cast<int>(refine_window_size*2+1);
-                                        // // int apertureSize = blockSize;
+                                        bool succes = vis::RefineFeatureByTartan(
+                                        num_samples,
+                                        samples_pointcloud,
+                                        vis_image,
+                                        half_window_size,
+                                        start_position,
+                                        out_T_t_c.T(),
+                                        &start_position,
+                                        final_cost,
+                                        debug,
+                                        camera_,
+                                        img_color                                        
+                                        );
+                                        // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
                                         
-
-                                        // // double k = 0.04;
-                                        // cv::Mat src = new_obslist_[j].image();
-                                        // // cv::Mat dst = cv::Mat::zeros( src.size(), CV_32FC1 );
-                                        // // cv::cornerHarris( src, dst, blockSize, apertureSize, k );
-
-                                        // // cv::Mat dst_norm, dst_norm_scaled;
-                                        // // cv::normalize( dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat() );
-                                        // // cv::convertScaleAbs( dst_norm, dst_norm_scaled );
-
-                                        // // cv::imshow("test",dst_norm_scaled);
-                                        // // cv::waitKey(2000);
-
-                                        // // gradient direction
-                                        // cv::Mat img_blurred;
-                                        // // cv::GaussianBlur(src, img_blurred, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
-                                        // img_blurred = src;
-                                        // cv::Mat grad_x, grad_y,grad_phase,grad_phase_normalized,grad_phase_normalized_;
-                                        // // Mat abs_grad_x, abs_grad_y;
-                                        // cv::Sobel(img_blurred, grad_x, CV_32FC1, 1,0,1);
-                                        // cv::Sobel(img_blurred, grad_y, CV_32FC1, 0,1,1);
-                                        // cv::phase(grad_x,grad_y,grad_phase, false);
-                                        // float arrow_size = 10;
-
-
-                                        // cv::Point start_point(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
-                                        // cv::Point end_point(start_point.x+arrow_size*cos(grad_phase.at<float>(start_point.x,start_point.y)),start_point.y+arrow_size*sin(grad_phase.at<float>(start_point.x,start_point.y)));
-                                        // cv::arrowedLine(img_color,start_point,end_point,cv::Scalar(0,255,0));
-                                            
-                                        
-                                        // cv::normalize(grad_phase,grad_phase_normalized,0,255,cv::NORM_MINMAX, CV_32FC1, cv::Mat());
-                                        // cv::convertScaleAbs( grad_phase_normalized, grad_phase_normalized_ );
-
-                                        // // cv::imshow("test",grad_phase_normalized_);
-                                        // cv::imwrite("grad_phase.png",grad_phase_normalized_);
-                                        // // cv::waitKey(20000);
 
                                     } 
 

@@ -30,6 +30,7 @@
 #include "apriltags/Tag36h11.h"
 #include "implementation/Datasetwriterhelper.hpp"
 #include "implementation/symmetry_refinement.h"
+#include "implementation/tartan_refinement.h"
 
 namespace aslam
 {
@@ -267,7 +268,7 @@ namespace aslam
             float minTagSizeAutoComplete = 10; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
             float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
             float minResizewindowSize = 2;
-            float maxResizewindowSize = 7;
+            float maxResizewindowSize = 10;
 
             bool harris_check = true;
     };
