@@ -29,7 +29,6 @@ class CameraGeometryBase {
  public:
   typedef boost::shared_ptr<CameraGeometryBase> Ptr;
   typedef boost::shared_ptr<const CameraGeometryBase> ConstPtr;
-
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   CameraGeometryBase();
   virtual ~CameraGeometryBase();
@@ -116,7 +115,7 @@ class CameraGeometryBase {
 
   static boost::shared_ptr<CameraGeometryBase> create(
       const sm::PropertyTree & config);
-
+  
   /// \brief print the internal parameters. This is just for debugging.
   virtual void print(std::ostream & out) = 0;
 

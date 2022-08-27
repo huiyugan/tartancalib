@@ -281,7 +281,6 @@ class DoubleSphereProjection {
   double _fov_parameter;  //!< parameter related to the valid region of the camera model
 
   distortion_t _distortion;
-
 };
 
 }  // namespace cameras

@@ -5,7 +5,6 @@ namespace aslam
 {
     namespace cameras
     {
-
         template<typename C>
         bool TartanCalibWorker<C>::export_dataset(std::string path)
         {
@@ -301,7 +300,7 @@ namespace aslam
                                     tagCorners.at<float>(0,0) = target_image_frame.coeff(0,index_reprojection);
                                     tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
-                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
+                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
                                     // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(255,0,0),2);   
                                     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
@@ -409,23 +408,32 @@ namespace aslam
 
                                         // TARTAN REFINEMENT: REGRESS MODEL DIRECTLY
                                         // we get a number of 3D points that is then used to regress the camera model on
-                                        int num_samples = 10; // in reality we evalute 2X this number of points, also its symmetric version
+                                        int num_samples = 1000; // in reality we evalute 2X this number of points, also its symmetric version
                                         float half_window_size = 5;
                                         std::vector<std::vector<Eigen::VectorXd>> samples_pointcloud;
                                         Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
                                         float target_scale_factor = 0.5;
 
+
+
                                         for (int sample_it = 0; sample_it < num_samples; sample_it++)
                                         {
                                             // step 1: get sample in target space
-                                            Eigen::VectorXd random_vector = Eigen::Vector2d::Random();
-                                            Eigen::VectorXd random_vector_minus = -random_vector;
+                                            // Eigen::VectorXd random_vector = Eigen::Vector2d::Random();
+                                            // Eigen::VectorXd random_vector_minus = -random_vector;
 
-                                            random_vector(0) *= target_scale_factor*min_delta_x;
-                                            random_vector(1) *= target_scale_factor*min_delta_x;
+                                            Eigen::VectorXd random_vector, random_vector_minus;
+                                            random_vector = target_scale_factor*min_delta_x*Eigen::Vector2d::Random();
+                                            if (sample_it % 2 == 0)
+                                            {
+                                                random_vector(0)*= 0.1;
+                                            }
+                                            else
+                                            {
+                                                random_vector(1)*= 0.1;
+                                            }
 
-                                            random_vector_minus(0) *= target_scale_factor*min_delta_x;
-                                            random_vector_minus(1) *= target_scale_factor*min_delta_x;
+                                            random_vector_minus = -random_vector;
 
                                             // samples in target frame
                                             Eigen::VectorXd sample_target_frame = start_target_frame + random_vector;
@@ -438,6 +446,8 @@ namespace aslam
                                             samples_pointcloud.push_back(std::vector<Eigen::VectorXd>({sample_3D,sample_3D_minus}));
 
                                         }
+                                        Eigen::VectorXd corner_3D = T*start_target_frame;                                       
+
                                         vis::Image<double> vis_image;
                                         vis_image.SetSize(1028,1224);
 
@@ -452,7 +462,7 @@ namespace aslam
 
                                         // create point cloud sample points, we will use this point cloud to regress the camera model
                                         // for (int sample_it = 0; sample_it < num_samples)
-
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),2);   
                                         bool succes = vis::RefineFeatureByTartan(
                                         num_samples,
                                         samples_pointcloud,
@@ -460,14 +470,15 @@ namespace aslam
                                         half_window_size,
                                         start_position,
                                         out_T_t_c.T(),
+                                        corner_3D,
                                         &start_position,
                                         final_cost,
                                         debug,
                                         camera_,
                                         img_color                                        
                                         );
-                                        // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
-                                        
+                                        camera_->setParameters(cam_params,true,true,true);
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
 
                                     } 
 
@@ -485,6 +496,7 @@ namespace aslam
                     std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
                     
                     aslam::Time stamp = obslist_[j].time();
+                    SM_INFO_STREAM("Writing an autofill");
                     cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
 
                 }
@@ -581,6 +593,7 @@ namespace aslam
                 num_corners_end += outCornerIdx_.size();
             }
             SM_INFO_STREAM("Ended tartan calib with "<<num_corners_end<<" corners.");
+            camera_->setParameters(cam_params,true,true,true);
             
             std::ofstream myfile;
             myfile.open (log_file,std::ios_base::app);

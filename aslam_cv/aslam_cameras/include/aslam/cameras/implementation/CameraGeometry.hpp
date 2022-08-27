@@ -531,6 +531,7 @@ namespace aslam {
 
     }
 
+
     template<typename PP, typename S, typename M>
     void CameraGeometry<PP, S, M>::print(std::ostream & out) {
       std::cout << "Printing!\n";

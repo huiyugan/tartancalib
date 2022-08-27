@@ -476,8 +476,8 @@ struct SymmetryCostFunction_SingleChannel {
       cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2); 
 
       cv::imwrite("symmetry_test.png",img_cpy);
-      // cv::imshow("test",img_cpy);
-      // cv::waitKey(20000);
+      cv::imshow("test",img_cpy);
+      cv::waitKey(20000);
 
 
       if (!image.ContainsPixelCenterConv(sample_pos)) {

@@ -12,7 +12,6 @@ CameraGeometryBase::~CameraGeometryBase() {
 
 boost::shared_ptr<CameraGeometryBase> CameraGeometryBase::create(
     const sm::PropertyTree & config) {
-
   std::string type = config.getString("type");
 
   boost::shared_ptr<CameraGeometryBase> rval;

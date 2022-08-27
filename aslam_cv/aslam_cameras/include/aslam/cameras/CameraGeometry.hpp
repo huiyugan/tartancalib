@@ -375,6 +375,7 @@ class CameraGeometry : public CameraGeometryBase {
   ///        outside the call.            
   virtual boost::shared_ptr<FrameBase> createUninitializedFrameBase() const;
 
+
   /// \brief This will create a frame with the right type. WARNING: it will not
   ///        fill in the camera geometry in the frame. This must be done manually
   ///        outside the call.

@@ -31,6 +31,10 @@
 #include "implementation/Datasetwriterhelper.hpp"
 #include "implementation/symmetry_refinement.h"
 #include "implementation/tartan_refinement.h"
+#include <aslam/cameras/CameraGeometryBase.hpp>
+#include <random>
+
+
 
 namespace aslam
 {
@@ -86,7 +90,7 @@ namespace aslam
       public boost::enable_shared_from_this<TartanCalibWorker<C>>
     {
         public:  
-            TartanCalibWorker(const C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
+            TartanCalibWorker(C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
             : obslist_(obslist),
             gd_(gd),
             target_(gd.target()),
@@ -99,6 +103,7 @@ namespace aslam
             in_width_(obslist[0].imCols()),
             in_height_(obslist[0].imRows()) // assumption: this array only contains images of the same resolution, as we expect to create one TartanCalibWorker class per camera
              { 
+              camera_->getParameters(cam_params,true,true,true);
               num_frames_ = obslist.size();
               num_views_ = fovs.cols();
               new_obslist_ = obslist_; // eventually we're outputting this variable, but we initialize it with the right observations (i.e., images and time stamps)
@@ -147,9 +152,7 @@ namespace aslam
             void homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection );
             void match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection);
             bool export_dataset(std::string path);
-            
-
-            
+           
            
             std::string ReprojectionModeToString(ReprojectionMode e)
             {
@@ -244,7 +247,7 @@ namespace aslam
             int num_corners_end =0;
             float rot_x_, rot_z_;
             bool verbose_,empty_pixels_;
-            const C* camera_;
+            C* camera_;
 
             // used to create remap
             Eigen::VectorXf xyz_ray_;
@@ -263,6 +266,7 @@ namespace aslam
             GridCalibrationTargetBase::Ptr target_;
             GridCalibrationTargetAprilgrid::Ptr target_april_;
             boost::shared_ptr<AprilTags::TagDetector> tagDetector_;
+            Eigen::MatrixXd cam_params;
 
             int minInitCornersAutoComplete = 16; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
             float minTagSizeAutoComplete = 10; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
