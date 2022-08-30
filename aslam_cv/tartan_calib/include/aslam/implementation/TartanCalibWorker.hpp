@@ -301,7 +301,7 @@ namespace aslam
                                     tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
-                                    // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
+                                    cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(255,0,0),2);   
                                     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
                                     quads(1,index_reprojection) = tagCorners.at<float>(0,1);
@@ -309,6 +309,7 @@ namespace aslam
                                     if (true)
                                     {
                                         // ORIGINAL SYMMETRY REFINEMENT
+
                                         // int num_samples = 50;
                                         // int window_half_size = refine_window_size; 
                                         // vis::Vec2f* out_position;
@@ -330,7 +331,7 @@ namespace aslam
                                         // {
                                         //     samples.push_back(vis::Vec2f::Random());
                                         // }
-                                        // vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                        // vis::Vec2f start_position(tagCorners.at<float>(0,1),tagCorners.at<float>(0,0));
 
                                         // bool debug = false;
                                         // int num_homography_samples = 100;
@@ -340,21 +341,21 @@ namespace aslam
                                         //     vis::Vec2f rand_vector = vis::Vec2f::Random();
                                         //     pixel_points.push_back(cv::Point2f(rand_vector(0)*window_half_size+start_position.x(),rand_vector(1)*window_half_size+start_position.y()));
                                         // }
-                                        // creating the homography between target and pixel coordinates
-                                        // std::vector<cv::Point2f> pixel_points = {
-                                        // cv::Point2f(start_position.x(),start_position.y()),
-                                        // cv::Point2f(start_position.x()-window_half_size,start_position.y()-window_half_size),
-                                        // cv::Point2f(start_position.x()-window_half_size,start_position.y()+window_half_size),
-                                        // cv::Point2f(start_position.x()+window_half_size,start_position.y()+window_half_size),
-                                        // cv::Point2f(start_position.x()+window_half_size,start_position.y()-window_half_size),
-                                        // };
+                                        // // creating the homography between target and pixel coordinates
+                                        // // std::vector<cv::Point2f> pixel_points = {
+                                        // // cv::Point2f(start_position.x(),start_position.y()),
+                                        // // cv::Point2f(start_position.x()-window_half_size,start_position.y()-window_half_size),
+                                        // // cv::Point2f(start_position.x()-window_half_size,start_position.y()+window_half_size),
+                                        // // cv::Point2f(start_position.x()+window_half_size,start_position.y()+window_half_size),
+                                        // // cv::Point2f(start_position.x()+window_half_size,start_position.y()-window_half_size),
+                                        // // };
                                         // std::vector<cv::Point2f> target_points;
 
                                         // for (auto pixel_point : pixel_points)
                                         // {
                                         //     Eigen::Vector3d euc_point;
                                         //     Eigen::Vector2d image_point;
-                                        //     image_point << pixel_point.x  , pixel_point.y ;
+                                        //     image_point << pixel_point.y  , pixel_point.x ;
                                         //     camera_->vsKeypointToEuclidean(image_point,euc_point);
                                         //     Eigen::Vector4d euc_h;
                                         //     euc_h << euc_point, 1.0;
@@ -378,18 +379,18 @@ namespace aslam
                                         //     Eigen::MatrixXf eigen_H = Eigen::MatrixXf(3 , 3);
                                         //     cv::cv2eigen(pattern_to_pixel_mat,eigen_H);
                                             
-                                        //     for (int r = 0; r < target_points.size(); r++)
-                                        //     {
-                                        //         Eigen::Vector3d target_point = Eigen::Vector3d(target_points[r].x,target_points[r].y,1.0);
-                                        //         Eigen::VectorXd image_target_point = eigen_H.cast<double>() *target_point ;
-                                        //         cv::circle(img_color, cv::Point2f(image_target_point(0),image_target_point(1)),3, cv::Scalar(255,255,255),2);   
-                                        //     }
-
+                                        //     // for (int r = 0; r < target_points.size(); r++)
+                                        //     // {
+                                        //     //     Eigen::Vector3d target_point = Eigen::Vector3d(target_points[r].x,target_points[r].y,1.0);
+                                        //     //     Eigen::VectorXd image_target_point = eigen_H.cast<double>() *target_point ;
+                                        //     //     cv::circle(img_color, cv::Point2f(image_target_point(0),image_target_point(1)),3, cv::Scalar(255,255,255),2);   
+                                        //     // }
 
                                         //     pattern_to_pixel = eigen_H;
                                         //     pixel_to_pattern = pattern_to_pixel.inverse();
 
-                                        //     bool succes = vis::RefineFeatureByTartan<vis::SymmetryCostFunction_SingleChannel>(
+                                        //     cv::circle(img_color, cv::Point2f(start_position.y(),start_position.x()),0, cv::Scalar(0,0,255),2);   
+                                        //     bool succes = vis::RefineFeatureBySymmetry<vis::SymmetryCostFunction_SingleChannel>(
                                         //     num_samples,
                                         //     samples,
                                         //     vis_image,
@@ -403,82 +404,169 @@ namespace aslam
                                         //     camera_,
                                         //     img_color                                        
                                         //     );
-                                        //     cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
+                                        //     cv::circle(img_color, cv::Point2f(start_position.y(),start_position.x()),0, cv::Scalar(0,255,0),2);   
                                         // }
 
                                         // TARTAN REFINEMENT: REGRESS MODEL DIRECTLY
+
                                         // we get a number of 3D points that is then used to regress the camera model on
-                                        int num_samples = 1000; // in reality we evalute 2X this number of points, also its symmetric version
-                                        float half_window_size = 5;
-                                        std::vector<std::vector<Eigen::VectorXd>> samples_pointcloud;
+                                        // int num_samples = 1000; // in reality we evalute 2X this number of points, also its symmetric version
+                                        // float half_window_size = 5;
+                                        // std::vector<std::vector<Eigen::VectorXd>> samples_pointcloud;
+                                        // Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
+                                        // float target_scale_factor = 0.9 ;
+
+
+
+                                        // for (int sample_it = 0; sample_it < num_samples; sample_it++)
+                                        // {
+                                        //     // step 1: get sample in target space
+                                        //     // Eigen::VectorXd random_vector = Eigen::Vector2d::Random();
+                                        //     // Eigen::VectorXd random_vector_minus = -random_vector;
+
+                                        //     Eigen::VectorXd random_vector, random_vector_minus;
+                                        //     random_vector = target_scale_factor*min_delta_x*Eigen::Vector2d::Random();
+                                        //     // if (sample_it % 2 == 0)
+                                        //     // {
+                                        //     //     random_vector(0)*= 0.3;
+                                        //     // }
+                                        //     // else
+                                        //     // {
+                                        //     //     random_vector(1)*= 0.3;
+                                        //     // }
+
+                                        //     random_vector_minus = -random_vector;
+
+                                        //     // samples in target frame
+                                        //     Eigen::VectorXd sample_target_frame = start_target_frame + random_vector ;
+                                        //     Eigen::VectorXd sample_target_frame_minus = start_target_frame + random_vector_minus ;
+                                            
+            
+
+                                        //     // samples in 3D space
+                                        //     Eigen::VectorXd sample_3D = T*sample_target_frame;
+                                        //     Eigen::VectorXd sample_3D_minus = T*sample_target_frame_minus;
+                                        //     // add to refinement input
+                                        //     samples_pointcloud.push_back(std::vector<Eigen::VectorXd>({sample_3D,sample_3D_minus}));
+
+                                        // }
+                                        // Eigen::VectorXd corner_3D = T*start_target_frame;                                       
+
+                                        // vis::Image<double> vis_image;
+                                        // vis_image.SetSize(1028,1224);
+
+                                        // // cv::Mat flat = image.reshape(1, image.total()*image.channels());
+                                        // Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(1028 , 1224);
+                                        // cv::cv2eigen(img_gray,eigen_mat);
+                                        // double *array = eigen_mat.data();
+                                        // vis_image.SetTo(array);
+                                        // float* final_cost;
+                                        // vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                        // bool debug = false;
+
+                                        // // create point cloud sample points, we will use this point cloud to regress the camera model
+                                        // // for (int sample_it = 0; sample_it < num_samples)
+                                        // // SM_INFO_STREAM("Starting point: "<<start_position);
+                                        // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),2);   
+                                        // bool succes = vis::RefineFeatureByTartan(
+                                        // num_samples,
+                                        // samples_pointcloud,
+                                        // vis_image,
+                                        // half_window_size,
+                                        // start_position,
+                                        // out_T_t_c.T(),
+                                        // corner_3D,
+                                        // &start_position,
+                                        // final_cost,
+                                        // debug,
+                                        // camera_,
+                                        // img_color                                        
+                                        // );
+                                        // camera_->setParameters(cam_params,true,true,true);
+                                        // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
+                                        // SM_INFO_STREAM("Refined to: "<<start_position);
+
+                                        // SYMMETRY FIT: FIT MODEL TO SYMMETRY FUNCTION DIRECTLY!
+                                        
+                                        // set up vis image that can be interpolated
+
+
+
+                                        // set up target-based samples
+                                        float window_half_size_scalar = 0.9;
+                                        float window_half_size = window_half_size_scalar*min_delta_x;
+                                        int num_samples_symmetry = 100; // in reality we evalute 2X this number of points, also its symmetric version
+                                        int num_meta_samples_axis = 100; // for each axis in the target frame we take this number of samples
+                                        float meta_grid_stepsize = window_half_size/(static_cast<float>(num_meta_samples_axis)-1.0);
+                                        std::vector<std::vector<Eigen::Vector2d>> samples_targetframe;
                                         Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
-                                        float target_scale_factor = 0.5;
+                                        float target_scale_factor = 0.9 ;
 
 
+                                        vis::Image<double> vis_image;
+                                        vis_image.SetSize(1028,1224);
 
-                                        for (int sample_it = 0; sample_it < num_samples; sample_it++)
+                                        Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(1028 , 1224);
+                                        cv::cv2eigen(img_gray,eigen_mat);
+                                        double *array = eigen_mat.data();
+                                        vis_image.SetTo(array);
+                                        
+
+                                        for (int sample_it = 0; sample_it < num_samples_symmetry; sample_it++) 
                                         {
                                             // step 1: get sample in target space
                                             // Eigen::VectorXd random_vector = Eigen::Vector2d::Random();
                                             // Eigen::VectorXd random_vector_minus = -random_vector;
 
-                                            Eigen::VectorXd random_vector, random_vector_minus;
-                                            random_vector = target_scale_factor*min_delta_x*Eigen::Vector2d::Random();
-                                            if (sample_it % 2 == 0)
-                                            {
-                                                random_vector(0)*= 0.1;
-                                            }
-                                            else
-                                            {
-                                                random_vector(1)*= 0.1;
-                                            }
-
+                                            Eigen::Vector2d random_vector, random_vector_minus;
+                                            random_vector = static_cast<double>(target_scale_factor*min_delta_x*window_half_size)*Eigen::Vector2d::Random();
+                                            // if (sample_it % 2 == 0)
+                                            // {
+                                            //     random_vector(0)*= 0.3;
+                                            // }
+                                            // else
+                                            // {
+                                            //     random_vector(1)*= 0.3;
+                                            // }
                                             random_vector_minus = -random_vector;
-
-                                            // samples in target frame
-                                            Eigen::VectorXd sample_target_frame = start_target_frame + random_vector;
-                                            Eigen::VectorXd sample_target_frame_minus = start_target_frame + random_vector_minus;
-
-                                            // samples in 3D space
-                                            Eigen::VectorXd sample_3D = T*sample_target_frame;
-                                            Eigen::VectorXd sample_3D_minus = T*sample_target_frame_minus;
-                                            // add to refinement input
-                                            samples_pointcloud.push_back(std::vector<Eigen::VectorXd>({sample_3D,sample_3D_minus}));
-
+                                            // // samples in target frame
+                                            Eigen::Vector2d sample_target_frame = Eigen::Vector2d(start_target_frame(0),start_target_frame(1)) + random_vector ;
+                                            Eigen::Vector2d sample_target_frame_minus = Eigen::Vector2d(start_target_frame(0),start_target_frame(1)) + random_vector_minus ;
+        
+                                            // // add to refinement input
+                                            std::vector<Eigen::Vector2d> sample_pair;
+                                            sample_pair.push_back(sample_target_frame);
+                                            sample_pair.push_back(sample_target_frame_minus);
+                                            samples_targetframe.push_back(sample_pair);
                                         }
-                                        Eigen::VectorXd corner_3D = T*start_target_frame;                                       
 
-                                        vis::Image<double> vis_image;
-                                        vis_image.SetSize(1028,1224);
+                                        std::vector<std::vector<Eigen::Vector2d>> meta_target_locations;
+                                        for (int row_meta = 0; row_meta < num_meta_samples_axis; row_meta ++)
+                                        {
+                                            std::vector<Eigen::Vector2d> row;
+                                            double row_coord = static_cast<double>(window_half_size - row_meta*meta_grid_stepsize);
+                                            for (int col_meta =0; col_meta < num_meta_samples_axis; col_meta ++)
+                                            {
+                                                double col_coord = static_cast<double>(-window_half_size + col_meta*meta_grid_stepsize);
+                                                row.push_back(Eigen::Vector2d(row_coord,col_coord));
+                                            }
+                                            meta_target_locations.push_back(row);
+                                        }
 
-                                        // cv::Mat flat = image.reshape(1, image.total()*image.channels());
-                                        Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(1028 , 1224);
-                                        cv::cv2eigen(img_gray,eigen_mat);
-                                        double *array = eigen_mat.data();
-                                        vis_image.SetTo(array);
-                                        float* final_cost;
-                                        vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
-                                        bool debug = false;
-
-                                        // create point cloud sample points, we will use this point cloud to regress the camera model
-                                        // for (int sample_it = 0; sample_it < num_samples)
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),2);   
-                                        bool succes = vis::RefineFeatureByTartan(
-                                        num_samples,
-                                        samples_pointcloud,
-                                        vis_image,
-                                        half_window_size,
-                                        start_position,
-                                        out_T_t_c.T(),
-                                        corner_3D,
-                                        &start_position,
-                                        final_cost,
-                                        debug,
-                                        camera_,
-                                        img_color                                        
+                                        float cost = 0;
+                                        vis::Vec2f start_position(tagCorners.at<float>(0,1),tagCorners.at<float>(0,0));
+                                        FitSymmetry(
+                                            num_samples_symmetry,
+                                            num_meta_samples_axis,
+                                            samples_targetframe,
+                                            meta_target_locations,
+                                            vis_image,
+                                            &start_position,
+                                            &cost,
+                                            camera_,
+                                            img_gray,
+                                            T
                                         );
-                                        camera_->setParameters(cam_params,true,true,true);
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),2);   
 
                                     } 
 

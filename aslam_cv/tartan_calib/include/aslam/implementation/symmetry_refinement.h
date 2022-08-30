@@ -458,7 +458,7 @@ struct SymmetryCostFunction_SingleChannel {
       // Get sample in one direction
       Vec2f sample_pos = Vec3f(pixel_tr_pattern_samples * sample.homogeneous()).hnormalized();
       // SM_INFO_STREAM("Sample pose "<<sample_pos);
-      cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2);   
+      // cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2);   
       if (!image.ContainsPixelCenterConv(sample_pos)) {
         *out_cost = numeric_limits<float>::infinity();
         return false;
@@ -470,15 +470,15 @@ struct SymmetryCostFunction_SingleChannel {
       image.InterpolateBilinearWithJacobian(sample_pos, &intensity_a, &gradient_a);
       
       // Get sample in opposite direction
-      sample_pos = Vec3f(pixel_tr_pattern_samples * (-1 * sample).homogeneous()).hnormalized();
       // SM_INFO_STREAM("Sample pose "<<sample_pos);
       
-      cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2); 
+      // cv::circle(img_cpy, cv::Point2f(sample_pos.x(),sample_pos.y()),1, cv::Scalar(0,255,0),2); 
 
-      cv::imwrite("symmetry_test.png",img_cpy);
-      cv::imshow("test",img_cpy);
-      cv::waitKey(20000);
+      // cv::imwrite("symmetry_test.png",img_cpy);
+      // cv::imshow("test",img_cpy);
+      // cv::waitKey(20000);
 
+      sample_pos = Vec3f(pixel_tr_pattern_samples * (-1 * sample).homogeneous()).hnormalized();
 
       if (!image.ContainsPixelCenterConv(sample_pos)) {
         *out_cost = numeric_limits<float>::infinity();
