@@ -493,14 +493,17 @@ namespace aslam
 
 
                                         // set up target-based samples
-                                        float window_half_size_scalar = 0.9;
-                                        float window_half_size = window_half_size_scalar*min_delta_x;
+                                        float window_half_size_scalar_meta = 0.5;
+                                        float window_half_size_meta = window_half_size_scalar_meta*min_delta_x;
+                                        
+                                        float window_half_size_scalar_symmetry = 1.0;
+                                        float window_half_size_symmetry = window_half_size_scalar_symmetry*min_delta_x;
+                                       
                                         int num_samples_symmetry = 100; // in reality we evalute 2X this number of points, also its symmetric version
-                                        int num_meta_samples_axis = 100; // for each axis in the target frame we take this number of samples
-                                        float meta_grid_stepsize = window_half_size/(static_cast<float>(num_meta_samples_axis)-1.0);
-                                        std::vector<std::vector<Eigen::Vector2d>> samples_targetframe;
+                                        const int num_meta_samples_axis = 50; // for each axis in the target frame we take this number of samples
+                                        float meta_grid_stepsize = window_half_size_meta*2./(static_cast<float>(num_meta_samples_axis)-1.0);
+                                        std::vector<std::vector<Eigen::VectorXd>> samples_targetframe;
                                         Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
-                                        float target_scale_factor = 0.9 ;
 
 
                                         vis::Image<double> vis_image;
@@ -518,48 +521,58 @@ namespace aslam
                                             // Eigen::VectorXd random_vector = Eigen::Vector2d::Random();
                                             // Eigen::VectorXd random_vector_minus = -random_vector;
 
-                                            Eigen::Vector2d random_vector, random_vector_minus;
-                                            random_vector = static_cast<double>(target_scale_factor*min_delta_x*window_half_size)*Eigen::Vector2d::Random();
+                                            Eigen::VectorXd random_vector, random_vector_minus;
+                                            random_vector = static_cast<double>(window_half_size_symmetry)*Eigen::Vector2d::Random();
                                             // if (sample_it % 2 == 0)
                                             // {
-                                            //     random_vector(0)*= 0.3;
+                                            //     random_vector(0)*= 0.1;
                                             // }
                                             // else
                                             // {
-                                            //     random_vector(1)*= 0.3;
+                                            //     random_vector(1)*= 0.1;
                                             // }
                                             random_vector_minus = -random_vector;
                                             // // samples in target frame
-                                            Eigen::Vector2d sample_target_frame = Eigen::Vector2d(start_target_frame(0),start_target_frame(1)) + random_vector ;
-                                            Eigen::Vector2d sample_target_frame_minus = Eigen::Vector2d(start_target_frame(0),start_target_frame(1)) + random_vector_minus ;
+                                            Eigen::VectorXd sample_target_frame = start_target_frame + random_vector ;
+                                            Eigen::VectorXd sample_target_frame_minus = start_target_frame + random_vector_minus ;
         
                                             // // add to refinement input
-                                            std::vector<Eigen::Vector2d> sample_pair;
+                                            std::vector<Eigen::VectorXd> sample_pair;
                                             sample_pair.push_back(sample_target_frame);
                                             sample_pair.push_back(sample_target_frame_minus);
                                             samples_targetframe.push_back(sample_pair);
                                         }
 
-                                        std::vector<std::vector<Eigen::Vector2d>> meta_target_locations;
-                                        for (int row_meta = 0; row_meta < num_meta_samples_axis; row_meta ++)
+                                        Eigen::Vector4d meta_locations[num_meta_samples_axis][num_meta_samples_axis];
+
+                                        double x_start = static_cast<double>(-window_half_size_meta);
+                                        double y_start = static_cast<double>(window_half_size_meta);
+
+                                        for (int row_idx = 0; row_idx < num_meta_samples_axis; row_idx++)
                                         {
-                                            std::vector<Eigen::Vector2d> row;
-                                            double row_coord = static_cast<double>(window_half_size - row_meta*meta_grid_stepsize);
-                                            for (int col_meta =0; col_meta < num_meta_samples_axis; col_meta ++)
+                                            for (int col_idx = 0; col_idx < num_meta_samples_axis; col_idx++)
                                             {
-                                                double col_coord = static_cast<double>(-window_half_size + col_meta*meta_grid_stepsize);
-                                                row.push_back(Eigen::Vector2d(row_coord,col_coord));
-                                            }
-                                            meta_target_locations.push_back(row);
+                                                double x = x_start + static_cast<double>(col_idx)*static_cast<double>(meta_grid_stepsize);
+                                                double y = y_start - static_cast<double>(row_idx)*static_cast<double>(meta_grid_stepsize);
+                                                Eigen::Vector4d meta_location;
+                                                meta_location(0) = x;
+                                                meta_location(1) = y;
+                                                meta_location(2) = 0;
+                                                meta_location(3) = 0;
+                            
+                                                meta_locations[row_idx][col_idx] = meta_location;
+                                            }                                       
                                         }
 
                                         float cost = 0;
-                                        vis::Vec2f start_position(tagCorners.at<float>(0,1),tagCorners.at<float>(0,0));
+                                        vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,0,255),1); 
                                         FitSymmetry(
+                                            start_target_frame,
                                             num_samples_symmetry,
                                             num_meta_samples_axis,
                                             samples_targetframe,
-                                            meta_target_locations,
+                                            meta_locations,
                                             vis_image,
                                             &start_position,
                                             &cost,
@@ -567,6 +580,7 @@ namespace aslam
                                             img_gray,
                                             T
                                         );
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),1); 
 
                                     } 
 
