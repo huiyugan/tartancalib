@@ -61,15 +61,16 @@ bool DebugScreen(
     Eigen::Matrix4d T_target_to_euc
     )
     {
-      cv::Mat intensity_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
-      for (int i = 0; i< num_meta_samples_axis; i++)
-      {
-        for (int j = 0; j< num_meta_samples_axis; j++)
-        {
-          intensity_img.at<float>(i,j) = static_cast<float>(TargetToIntensity(image, T_target_to_euc, camera, start_target_frame +  meta_locations[i][j]));
-        }
-      }
-      cv::imwrite("intensity_test.png",intensity_img);
+      SM_INFO_STREAM("Meta samples: "<<num_meta_samples_axis);
+      // cv::Mat intensity_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
+      // for (int i = 0; i< num_meta_samples_axis; i++)
+      // {
+      //   for (int j = 0; j< num_meta_samples_axis; j++)
+      //   {
+      //     intensity_img.at<float>(i,j) = static_cast<float>(TargetToIntensity(image, T_target_to_euc, camera, start_target_frame +  meta_locations[i][j]));
+      //   }
+      // }
+      // cv::imwrite("intensity_test.png",intensity_img);
 
       cv::Mat symmetry_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
       
@@ -98,7 +99,7 @@ bool DebugScreen(
       // cv::waitKey(20000);
 
       // SM_INFO_STREAM("Best target: "<<start_target_frame +  meta_locations[minLoc.x][minLoc.y]);
-      *out_position = TargetToImageFrame(start_target_frame, T_target_to_euc, camera);
+      *out_position = TargetToImageFrame(start_target_frame +  meta_locations[minLoc.x][minLoc.y], T_target_to_euc, camera);
     }  
 
 template <typename T, typename C, size_t rows, size_t cols>
@@ -117,30 +118,35 @@ bool FitSymmetry(
     ) {
       // SM_INFO_STREAM("Target initial position: "<<start_target_frame);
       Eigen::Vector4d intermediate_target_frame = start_target_frame;
+      Eigen::Vector4d test_target_frame;
       // DebugScreen(start_target_frame, num_samples_symmetry,num_meta_samples_axis,samples_targetframe,meta_locations,image,out_position,final_cost,camera,cv_image,T_target_to_euc);
       constexpr int kDim = 2;
       Matrix<double, kDim, kDim> H;
       Matrix<double, kDim, 1> b;
       double lambda = -1;
       double last_step_squared_norm = numeric_limits<float>::infinity();
-      
-      constexpr int num_it = 10;
-      for (int i = 0; i< num_it; i++)
-      {
-        Eigen::Vector2d Jacobian;
-        double cost = TargetToJacobian(image, T_target_to_euc, camera, intermediate_target_frame,samples_targetframe,num_samples_symmetry,cv_image,&Jacobian,&H, &b);
-        double jac_norm = Jacobian.norm();
-        Eigen::Vector2d Jac_norm = Jacobian/jac_norm * 0.00005;
+      Eigen::Vector2d Jacobian;
+      // constexpr int num_it = 10;
+      // for (int i = 0; i< num_it; i++)
+      // {
+      //   Eigen::Vector2d Jacobian;
+      //   double cost = TargetToJacobian(image, T_target_to_euc, camera, intermediate_target_frame,samples_targetframe,num_samples_symmetry,cv_image,&Jacobian,&H, &b);
+      //   double jac_norm = Jacobian.norm();
+      //   Eigen::Vector2d Jac_norm = Jacobian/jac_norm * 0.0005;
 
-        intermediate_target_frame(0) -= Jac_norm(0);
-        intermediate_target_frame(1) -= Jac_norm(1);
-        // SM_INFO_STREAM("Refined target position: "<<out_pos);
-      }
+      //   intermediate_target_frame(0) -= Jac_norm(0);
+      //   intermediate_target_frame(1) -= Jac_norm(1);
+      //   // SM_INFO_STREAM("Refined target position: "<<out_pos);
+      // }
       
 
-      *out_position = TargetToImageFrame(intermediate_target_frame,T_target_to_euc,camera);
-      // constexpr int kMaxIterationCount = 0;
-      // for (int iteration = 0; iteration < kMaxIterationCount; ++ iteration) {
+      // *out_position = TargetToImageFrame(intermediate_target_frame,T_target_to_euc,camera);
+
+      constexpr int kMaxIterationCount = 30;
+      double norm_threshold = 0.0005;
+      for (int iteration = 0; iteration < kMaxIterationCount; ++ iteration) {
+      double lambda = -1;
+
        
       //   // *out_position = TargetToImageFrame(start_target_frame, T_target_to_euc, camera);
 
@@ -152,48 +158,59 @@ bool FitSymmetry(
       //   // }
     
       // // Initialize lambda?
-      // if (lambda < 0) {
-      //   lambda = 0.001f * (1.f / kDim) * H.diagonal().sum();
-      // }
+      // SM_INFO_STREAM("Meta iteration: "<<iteration);
+      if (lambda < 0) {
+        lambda = 0.001f * (1.f / kDim) * H.diagonal().sum();
+      }
     
-      // bool applied_update = false;
-      // for (int lm_iteration = 0; lm_iteration < 1; ++ lm_iteration) {
-      //   Matrix<double, kDim, kDim> H_LM;
-      //   H_LM.triangularView<Eigen::Upper>() = H.triangularView<Eigen::Upper>();
-      //   H_LM.diagonal().array() += lambda;
-      
-      
-      //   Eigen::Matrix<double, kDim, 1> x = H_LM.cast<double>().selfadjointView<Eigen::Upper>().ldlt().solve(b.cast<double>());
+      bool applied_update = false;
+      for (int lm_iteration = 0; lm_iteration < 10; ++ lm_iteration) {
+        // SM_INFO_STREAM("Minor iteration: "<<lm_iteration);
 
+        // this fill in H and b with the jacobian parts
+        double cost = TargetToJacobian(image, T_target_to_euc, camera, intermediate_target_frame,samples_targetframe,num_samples_symmetry,cv_image,&Jacobian,&H, &b);
+
+        Matrix<double, kDim, kDim> H_LM;
+        H_LM.triangularView<Eigen::Upper>() = H.triangularView<Eigen::Upper>();
+        H_LM.diagonal().array() += lambda;
       
 
-      //   double test_cost;
-      //   // SM_INFO_STREAM("x: "<<x);
-      // if (!CostFunction::ComputeCornerRefinementCost(test_pixel_tr_pattern_samples, image, num_samples, pattern_samples, &test_cost)) {
-      //   if (kDebug) {
-      //   //   LOG(INFO) << "  CostFunction::ComputeCornerRefinementCost() failed, aborting.";
-      //   }
-      //   return false;
-      // }
+        Eigen::Matrix<double, kDim, 1> x = H_LM.cast<double>().selfadjointView<Eigen::Upper>().ldlt().solve(b.cast<double>());
+
+        if (x.norm()>norm_threshold && x.norm() >0.000000001)
+        {
+          x *= (norm_threshold/x.norm());
+        }
+        
+
+        test_target_frame = intermediate_target_frame;
+        test_target_frame(0) -= x(0,0);
+        test_target_frame(1) -= x(1,0);
+      
+
+        double test_cost = TargetToSymmetry(image, T_target_to_euc, camera, test_target_frame,samples_targetframe,num_samples_symmetry,cv_image);
+
+        // SM_INFO_STREAM("x: "<<x);
+        
       
       // if (kDebug) {
       //   // LOG(INFO) << "  test_cost: " << test_cost << ", cost: " << cost;
       // }
       
-      // if (test_cost < cost) {
-      //   if (final_cost) {
-      //     *final_cost = test_cost;
-      //   }
-      //   last_step_squared_norm = Vec2f(x(2), x(5)).squaredNorm();  // using the translation only
-      //   pixel_tr_pattern_samples = test_pixel_tr_pattern_samples;
-      //   lambda *= 0.5f;
-      //   applied_update = true;
-      //   break;
-      // } else {
-        // lambda *= 2.f;
-      // }
-    // }
-    
+      if (test_cost < cost) {
+        if (final_cost) {
+          *final_cost = test_cost;
+        }
+        intermediate_target_frame = test_target_frame;
+        lambda *= 0.5f;
+        applied_update = true;
+        break;
+      } else {
+        lambda *= 2.f;
+      }
+    }
+    }
+   *out_position = TargetToImageFrame(intermediate_target_frame,T_target_to_euc,camera);
     // if (applied_update) {
     //   // Since the element at (2, 2) is always 1, we can directly assign the
     //   // translation values instead of computing:
@@ -209,7 +226,7 @@ bool FitSymmetry(
     //     // LOG(INFO) << "Cannot find an update to improve the cost. Returning convergence (iteration " << iteration << ").";
     //   }
     // }
-  // }
+  
   }
 
 
@@ -346,7 +363,7 @@ double TargetToJacobian(
         MatrixXd jacobian_neg = gradient_neg_*Jacobian_cam_neg_T*Jacobian_transformation;
 
         // SM_INFO_STREAM("Suggested changes: "<<(jacobian_pos-jacobian_neg));
-        *Jacobian += (jacobian_pos-jacobian_neg);
+        *Jacobian += (intensity_pos-intensity_neg)*(jacobian_pos-jacobian_neg);
 
         C_symmetry += (intensity_pos-intensity_neg)*(intensity_pos-intensity_neg);
         // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),3, cv::Scalar(255,0,0),2);
