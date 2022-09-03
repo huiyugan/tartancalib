@@ -278,6 +278,7 @@ namespace aslam
             float maxResizewindowSize = 10;
 
             bool harris_check = true;
+            bool start_from_subpix = true;
     };
     }
 }
