@@ -32,8 +32,10 @@
 #include "implementation/symmetry_refinement.h"
 #include "implementation/tartan_refinement.h"
 #include "implementation/symmetry_fit.h"
+#include "deltille/PolynomialSaddleDetectorContext.h"
 #include <aslam/cameras/CameraGeometryBase.hpp>
 #include <random>
+// #include "deltille/utils.h"
 
 
 
@@ -113,7 +115,7 @@ namespace aslam
                 obs.getCornersIdx(outCornerIdx_);
               }
               
-              
+
               export_dataset("before_tartan.bin");
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() && resolutions_.cols() == reproj_types.size(), "All inserted tartan matrices need the same number of columns." );
               
@@ -269,7 +271,7 @@ namespace aslam
             boost::shared_ptr<AprilTags::TagDetector> tagDetector_;
             Eigen::MatrixXd cam_params;
 
-            int minInitCornersAutoComplete = 16; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
+            int minInitCornersAutoComplete = 24; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
             float minTagSizeAutoComplete = 0; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
             float correction_threshold = 20.0; // number of pixel offset between reprojection and detection we allow
             float minResizewindowSize = 2;

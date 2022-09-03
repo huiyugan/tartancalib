@@ -30,6 +30,7 @@
 
 #include "libvis/eigen.h"
 #include "libvis/image.h"
+
 // #include <libvis/libvis.h>
 
 namespace vis {
@@ -58,10 +59,10 @@ bool DebugScreen(
     float* final_cost,
     C* camera,
     cv::Mat cv_image,
-    Eigen::Matrix4d T_target_to_euc
+    Eigen::Matrix4d T_target_to_euc,
+    double* mean_sym
     )
     {
-      SM_INFO_STREAM("Meta samples: "<<num_meta_samples_axis);
       // cv::Mat intensity_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
       // for (int i = 0; i< num_meta_samples_axis; i++)
       // {
@@ -73,7 +74,7 @@ bool DebugScreen(
       // cv::imwrite("intensity_test.png",intensity_img);
 
       cv::Mat symmetry_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
-      
+
       for (int i = 0; i< num_meta_samples_axis; i++)
       {
         for (int j = 0; j< num_meta_samples_axis; j++)
@@ -86,16 +87,18 @@ bool DebugScreen(
 
         }
       }
+
       double minVal; 
       double maxVal; 
       cv::Point minLoc; 
       cv::Point maxLoc;
 
       minMaxLoc( symmetry_img, &minVal, &maxVal, &minLoc, &maxLoc );
-      symmetry_img *= 255.0/maxVal;
-      symmetry_img = 255.0 - symmetry_img;
-      SM_INFO_STREAM("Best point: "<<minLoc);
-      cv::imwrite("symmetry_test.png",symmetry_img);
+      symmetry_img *= 1.0/maxVal;
+      symmetry_img = 1.0 - symmetry_img;
+      cv::Scalar tempVal = cv::mean( symmetry_img );
+      *mean_sym = static_cast<double>(tempVal.val[0]);
+
       // cv::waitKey(20000);
 
       // SM_INFO_STREAM("Best target: "<<start_target_frame +  meta_locations[minLoc.x][minLoc.y]);
@@ -143,9 +146,9 @@ bool FitSymmetry(
       // *out_position = TargetToImageFrame(intermediate_target_frame,T_target_to_euc,camera);
 
       constexpr int kMaxIterationCount = 30;
-      double norm_threshold = 0.0005;
+      double norm_threshold = 0.00005;
       for (int iteration = 0; iteration < kMaxIterationCount; ++ iteration) {
-      double lambda = -1;
+        // lambda = -1;
 
        
       //   // *out_position = TargetToImageFrame(start_target_frame, T_target_to_euc, camera);
@@ -271,7 +274,10 @@ double TargetToSymmetry(
         vector<Eigen::VectorXd> sample_pair = samples_targetframe[i];
         
         target_location_pos = sample_pair[0] + target_location;
-        target_location_neg = sample_pair[1] + target_location;
+        target_location_neg = sample_pair[1] + target_location; 
+
+        // SM_INFO_STREAM("Target location pos: "<<target_location_pos);
+        // SM_INFO_STREAM("Target location neg: "<<target_location_neg);
 
         pos_3D =  T_target_to_euc*target_location_pos;
         neg_3D =  T_target_to_euc*target_location_neg;
@@ -286,11 +292,9 @@ double TargetToSymmetry(
         intensity_neg = image.InterpolateBilinear(sample_neg);
 
         C_symmetry += (intensity_pos-intensity_neg)*(intensity_pos-intensity_neg);
-        // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),3, cv::Scalar(255,0,0),2);
-        // cv::circle(cv_img, cv::Point2f(sample_neg(1),sample_neg(0)),3, cv::Scalar(255,0,0),2);
-
-        // SM_INFO_STREAM("Positive location: "<<sample_pos);
-        // SM_INFO_STREAM("Negative location: "<<sample_neg);
+        // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),0, cv::Scalar(255,0,0),1);
+        // cv::circle(cv_img, cv::Point2f(sample_neg(1),sample_neg(0)),0, cv::Scalar(0,255,0),1);
+       
 
         // cv::imshow("test",cv_img);
         // cv::waitKey(20000);
@@ -318,10 +322,12 @@ double TargetToJacobian(
       H->triangularView<Eigen::Upper>().setZero();
       b->setZero();
       double C_symmetry = 0;
+      double residual = 0;
       double intensity_pos, intensity_neg;
       Eigen::Matrix<double, 1, 2> gradient_pos, gradient_neg, gradient_pos_, gradient_neg_;
       Eigen::VectorXd distorted_pixel_location;
       Eigen::MatrixXd Jacobian_cam_pos, Jacobian_cam_neg, Jacobian_cam_pos_T, Jacobian_cam_neg_T, Jacobian_transformation;
+      double learning_rate = 0.0000001;
       for (int i = 0; i < num_samples_symmetry ; i++)
       {
         vector<Eigen::VectorXd> sample_pair = samples_targetframe[i];
@@ -363,9 +369,10 @@ double TargetToJacobian(
         MatrixXd jacobian_neg = gradient_neg_*Jacobian_cam_neg_T*Jacobian_transformation;
 
         // SM_INFO_STREAM("Suggested changes: "<<(jacobian_pos-jacobian_neg));
-        *Jacobian += (intensity_pos-intensity_neg)*(jacobian_pos-jacobian_neg);
+        *Jacobian += (jacobian_pos-jacobian_neg);
 
         C_symmetry += (intensity_pos-intensity_neg)*(intensity_pos-intensity_neg);
+        residual += (intensity_pos-intensity_neg);
         // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),3, cv::Scalar(255,0,0),2);
         // cv::circle(cv_img, cv::Point2f(sample_neg(1),sample_neg(0)),3, cv::Scalar(255,0,0),2);
 
@@ -378,8 +385,8 @@ double TargetToJacobian(
       }
       Eigen::MatrixXd Jacobian_mat = *Jacobian;
       // SM_INFO_STREAM("Jacobian RAW"<<Jacobian_mat);
-      H->triangularView<Eigen::Upper>() += Jacobian_mat.transpose() * Jacobian_mat;
-      *b += C_symmetry * Jacobian_mat;
+      H->triangularView<Eigen::Upper>() += learning_rate*Jacobian_mat.transpose() * Jacobian_mat;
+      *b += residual * Jacobian_mat*learning_rate;
       return C_symmetry;
 
     }

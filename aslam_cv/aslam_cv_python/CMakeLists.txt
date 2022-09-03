@@ -57,8 +57,25 @@ add_library(libvis SHARED
 set_property(TARGET libvis PROPERTY FOLDER "libvis")
 
 
+set(DELTILLE_FILES 
+deltille/deltille.cc  
+deltille/DetectorParams.h 
+deltille/PolynomialFit.h 
+deltille/TagFamily.h
+deltille/utils.h
+deltille/PolynomialSaddleDetectorContext.h
+deltille/DetectorTools.cpp
+)
+
+add_library(deltille SHARED IMPORTED
+${DELTILLE_FILES}
+)
+
+# set_property(TARGET deltille PROPERTY FOLDER "deltille")
+
 # set_property(TARGET libvis PROPERTY FOLDER "libvis")
 include_directories(
+  ./deltille/
   ./libvis/src
   ./libvis/third_party/loguru/
     include 

@@ -300,21 +300,21 @@ namespace aslam
                                     tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
-                                    // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));
-                                    // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(255,0,0),2);   
-                                    quads(0,index_reprojection) = tagCorners.at<float>(0,0);
-                                    quads(1,index_reprojection) = tagCorners.at<float>(0,1);
+                                    
                                     
                                     if (true)
                                     {
+                                        float desired_window_pixel = 15.0;
                                         // set up target-based samples
                                         float window_half_size_scalar_meta = 0.5;
+                                        // float window_half_size_meta = desired_window_pixel/tag_size;
                                         float window_half_size_meta = window_half_size_scalar_meta*min_delta_x;
                                         
                                         float window_half_size_scalar_symmetry = 1.0;
+                                        // float window_half_size_scalar_symmetry = desired_window_pixel/tag_size;
                                         float window_half_size_symmetry = window_half_size_scalar_symmetry*min_delta_x;
                                        
-                                        int num_samples_symmetry = 100; // in reality we evalute 2X this number of points, also its symmetric version
+                                        int num_samples_symmetry = 1000; // in reality we evalute 2X this number of points, also its symmetric version
                                         const int num_meta_samples_axis = 50; // for each axis in the target frame we take this number of samples
                                         float meta_grid_stepsize = window_half_size_meta*2./(static_cast<float>(num_meta_samples_axis)-1.0);
                                         std::vector<std::vector<Eigen::VectorXd>> samples_targetframe;
@@ -339,24 +339,24 @@ namespace aslam
                                             Eigen::VectorXd random_vector, random_vector_minus;
                                             // random_vector = Eigen::Vector2d::Random();
                                             // double min_angle, max_angle;
+                                            random_vector = Eigen::Vector2d::Random()*min_delta_x*window_half_size_scalar_symmetry;
 
                                             // if (sample_it % 2 == 0)
                                             // {
-                                            //     // random_vector(0)*= 0.1;
-                                            //     min_angle = 0.4*PI;
-                                            //     max_angle = 0.6*PI;
+                                            //     random_vector(0)*= 0.5;
+                                            // // //     min_angle = 0.4*PI;
+                                            // // //     max_angle = 0.6*PI;
                                             // }
                                             // else
                                             // {
-                                            //     min_angle = -0.1*PI;
-                                            //     max_angle = 0.1*PI;
-                                            //     // random_vector(1)*= 0.1;
+                                            // // //     min_angle = -0.1*PI;
+                                            // // //     max_angle = 0.1*PI;
+                                            //     random_vector(1)*= 0.5;
                                             // }
 
                                             // double random_angle = min_angle + random_vector(0)*(max_angle-min_angle);
                                             // random_vector(0) = cos(random_angle)*min_delta_x*window_half_size_scalar_symmetry;
                                             // random_vector(1) = sin(random_angle)*min_delta_x*window_half_size_scalar_symmetry;
-                                            random_vector = Eigen::Vector2d::Random()*min_delta_x*window_half_size_scalar_symmetry;
 
                                             random_vector_minus = -random_vector;
                                             // // samples in target frame
@@ -390,11 +390,14 @@ namespace aslam
                                                 meta_locations[row_idx][col_idx] = meta_location;
                                             }                                       
                                         }
-
                                         float cost = 0;
+                                        cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
                                         vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,0,255),1); 
                                         // SM_INFO_STREAM("Start: "<<start_position);
+                                        double mean_sym = 0;
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,0,255),1); 
+
+                                        vis::Vec2f dummy_position;
                                         DebugScreen(
                                             start_target_frame,
                                             num_samples_symmetry,
@@ -405,11 +408,112 @@ namespace aslam
                                             &start_position,
                                             &cost,
                                             camera_,
-                                            img_gray,
+                                            img_color,
+                                            T,
+                                            &mean_sym
+                                        );
+
+                                        FitSymmetry(
+                                            start_target_frame,
+                                            num_samples_symmetry,
+                                            num_meta_samples_axis,
+                                            samples_targetframe,
+                                            meta_locations,
+                                            vis_image,
+                                            &start_position,
+                                            &cost,
+                                            camera_,
+                                            img_color,
                                             T
                                         );
+                                        // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
+
+                                        double min_sym = 0.2;
+                                        double max_sym = 0.45;
+                                        int min_circle = 2;
+                                        int max_circle = 10;
+                                        
+                                        if (mean_sym < min_sym)
+                                        {
+                                            mean_sym = min_sym;
+                                        }
+                                        else if (mean_sym > max_sym)
+                                        {
+                                            mean_sym = max_sym;
+                                        }
+
+                                        int circle_size = static_cast<int>((mean_sym-min_sym)/(max_sym-min_sym)*(max_circle-min_circle)+min_circle);
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),1); 
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),circle_size, cv::Scalar(0,255,0),1); 
+                                        // SM_INFO_STREAM("Mean symmetry: "<<mean_sym);
+                                        // if (mean_sym < 1.0)
+                                        // {
+                                        //     // deltille refinement
+                                        //     // std::vector<cv::Point2f> starting_point;
+                                        //     // // starting_point.push_back(cv::Point2f(start_position.y(),start_position.x()));
+                                        //     // std::vector<orp::calibration::deltille::SaddlePoint> refined;
+                                        //     // orp::calibration::deltille::getInitialSaddleLocations(img_gray, starting_point);
+                                        //     // orp::calibration::deltille::PolynomialSaddleDetectorContext<orp::calibration::deltille::SaddlePoint> detector = orp::calibration::deltille::PolynomialSaddleDetectorContext<orp::calibration::deltille::SaddlePoint>(img_gray);
+                                        //     // detector.findSaddles(refined);
+
+                                        //     // std::vector<orp::calibration::deltille::SaddlePoint> refined;
+                                        //     // orp::calibration::deltille::PolynomialFit<orp::calibration::deltille::SaddlePoint> tempFitting;
+                                        //     // tempFitting.initSaddleFitting(20);
+                                        //     // cv::Mat temp;
+                                        //     // cv::filter2D(img_gray, temp, cv::DataType<float>::depth,
+                                        //     //             tempFitting.getSmoothingKernel());
+                                        //     // tempFitting.saddleSubpixelRefinement(temp, starting_point, refined, 5, true);
+
+                                        //     // // int num_clusters = 0;
+                                        //     // // std::vector<int> cluster_ids;
+
+                                        //     // // std::vector<orp::calibration::deltille::SaddlePoint::ClusterDescType> cluster_stats;
+                                        //     // // orp::calibration::deltille::clusterPoints2(refined, img_gray.size(), cluster_ids, cluster_stats, num_clusters, 1.0);
+
+                                        //     for (int clust_id  =  0; clust_id < refined.size(); clust_id ++)
+                                        //     {
+                                        //         SM_INFO_STREAM("x,y: "<<refined[clust_id].x<<", "<<refined[clust_id].y);
+                                        //         cv::circle(img_color, cv::Point2f(float(refined[clust_id].x),float(refined[clust_id].y)),4, cv::Scalar(0,255,0),1);
+                                        //         // if (!std::isnan(refined[clust_id].x)  && refined[clust_id].x < std::numeric_limits<double>::infinity())
+                                        //     //     {
+                                        //     //     SM_INFO_STREAM("x,y: "<<refined[clust_id].x<<", "<<refined[clust_id].y);
+
+                                        //     }
+                                        //     cv::imwrite("test_deltille.png",img_color);
+                                        //     // }
+
+                                        //     // SM_INFO_STREAM("Refined using deltille: "<<refined);
+
+
+                                        //     // FitSymmetry(
+                                        //     // start_target_frame,
+                                        //     // num_samples_symmetry,
+                                        //     // num_meta_samples_axis,
+                                        //     // samples_targetframe,
+                                        //     // meta_locations,
+                                        //     // vis_image,
+                                        //     // &start_position,
+                                        //     // &cost,
+                                        //     // camera_,
+                                        //     // img_color,
+                                        //     // T
+                                        //     // );
+                                        //     // quads(0,index_reprojection) = start_position(0);
+                                        //     // quads(1,index_reprojection) = start_position(1);
+                                        //     // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),1); 
+
+                                        // }
+                                        // else
+                                        // {
+                                        //     cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
+                                        //     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
+                                        //     quads(1,index_reprojection) = tagCorners.at<float>(0,1);
+                                        //     cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(255,0,0),1); 
+
+
+                                        // }
+                                        
                                         // SM_INFO_STREAM("Refined to: "<<start_position);
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,255,0),1); 
 
                                     } 
 
