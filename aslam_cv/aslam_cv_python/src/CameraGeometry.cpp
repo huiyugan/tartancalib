@@ -81,7 +81,7 @@ boost::python::tuple estimateTransformation(const C * camera, aslam::cameras::Gr
 }
 
 template<typename C>
-boost::python::list getProjections(C * camera, aslam::cameras::GridDetector gd,const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const  boost::python::list & reproj_pylist, const  boost::python::list & debug_modes)
+boost::python::list getProjections(const C * camera, aslam::cameras::GridDetector gd,const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const  boost::python::list & reproj_pylist, const  boost::python::list & debug_modes)
 {
   //convert obs python list to stl vector
   boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;

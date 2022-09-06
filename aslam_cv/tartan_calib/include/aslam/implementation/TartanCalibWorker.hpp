@@ -302,7 +302,7 @@ namespace aslam
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
                                     
                                     
-                                    if (true)
+                                    if (symmetry_refinement)
                                     {
                                         float desired_window_pixel = 15.0;
                                         // set up target-based samples
@@ -310,19 +310,44 @@ namespace aslam
                                         // float window_half_size_meta = desired_window_pixel/tag_size;
                                         float window_half_size_meta = window_half_size_scalar_meta*min_delta_x;
                                         
-                                        float window_half_size_scalar_symmetry = 1.5;
+                                        float window_half_size_scalar_symmetry = 1.0;
                                         // float window_half_size_scalar_symmetry = desired_window_pixel/tag_size;
                                         float window_half_size_symmetry = window_half_size_scalar_symmetry*min_delta_x;
-                                       
-                                        int num_samples_symmetry = 100; // in reality we evalute 2X this number of points, also its symmetric version
-                                        const int num_meta_samples_axis = 50; // for each axis in the target frame we take this number of samples
+                                        
+                                        int num_samples_symmetry = 200; // in reality we evalute 2X this number of points, also its symmetric version
+                                        const int num_meta_samples_axis = 20; // for each axis in the target frame we take this number of samples
                                         float meta_grid_stepsize = window_half_size_meta*2./(static_cast<float>(num_meta_samples_axis)-1.0);
                                         std::vector<std::vector<Eigen::VectorXd>> samples_targetframe;
 
                                         // start target frame position is just on the target
                                         Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
 
-                                      
+                                        if(start_from_subpix)
+                                        {
+                                            // SM_INFO_STREAM("Start target frame: "<<start_target_frame);
+                                            // SM_INFO_STREAM("Transfomration: "<<T);
+                                            // //test with start target frame
+                                            // Eigen::VectorXd euclidean = T*start_target_frame;
+                                            Eigen::Vector3d euclidean_3d;
+                                            Eigen::Vector4d euclidean_4d;
+                                            cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
+
+                                            // Eigen::VectorXd subpixrefined = Eigen::Vector2d(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                            
+
+                                            // camera_->vsEuclideanToKeypoint(euclidean,distorted_pixel_location_);
+
+                                            //project back to board
+                                            camera_->vsKeypointToEuclidean(quads.col(k*4+q),euclidean_3d);
+                                            euclidean_4d(0) = euclidean_3d(0);
+                                            euclidean_4d(1) = euclidean_3d(1);
+                                            euclidean_4d(2) = euclidean_3d(2);
+                                            euclidean_4d(3) = 1.0;
+
+                                            start_target_frame = out_T_t_c.T()*euclidean_4d;
+                                        }
+
+                                        
                                         for (int sample_it = 0; sample_it < num_samples_symmetry; sample_it++) 
                                         {
                                             // step 1: get sample in target space
@@ -332,7 +357,7 @@ namespace aslam
                                             Eigen::VectorXd random_vector, random_vector_minus;
                                             // random_vector = Eigen::Vector2d::Random();
                                             // double min_angle, max_angle;
-                                            random_vector = Eigen::Vector2d::Random()*min_delta_x*window_half_size_scalar_symmetry;
+                                            random_vector = Eigen::Vector2d::Random()*min_delta_x*window_half_size_scalar_symmetry ;
 
                                             // if (sample_it % 2 == 0)
                                             // {
@@ -353,10 +378,10 @@ namespace aslam
 
                                             random_vector_minus = -random_vector;
                                             // // samples in target frame
-                                            // Eigen::VectorXd sample_target_frame = start_target_frame + random_vector ;
-                                            // Eigen::VectorXd sample_target_frame_minus = start_target_frame + random_vector_minus ;
                                             Eigen::VectorXd sample_target_frame = random_vector ;
                                             Eigen::VectorXd sample_target_frame_minus = random_vector_minus ;
+                                            // Eigen::VectorXd sample_target_frame = random_vector ;
+                                            // Eigen::VectorXd sample_target_frame_minus = random_vector_minus ;
                                             // // add to refinement input
                                             std::vector<Eigen::VectorXd> sample_pair;
                                             sample_pair.push_back(sample_target_frame);
@@ -387,14 +412,22 @@ namespace aslam
                                         float cost = 0;
                                         // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
                                         vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                        cv::Point2f start_position_cv = cv::Point2f(start_position.x(),start_position.y());
+
+
                                         // SM_INFO_STREAM("Start: "<<start_position);
                                         double mean_sym = 0;
                                         cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,0,255),1); 
 
-                                        std::vector<double> levels = {1.00};
+                                        std::vector<double> levels = {1.0,1.0,1.0};
+                                        std::vector<int> blur = {41,21,-1};
+                                        // std::vector<double> levels = {1.0};
+                                        // std::vector<int> blur = {-1};
                                         cv::Mat downsampled_gray;
+
                                         for (int level = 0 ; level < levels.size() ; level++ )
                                         {      
+
                                             const double scaling_factor = levels[level];
                                             if (scaling_factor != 1.0)
                                             {
@@ -404,6 +437,19 @@ namespace aslam
                                             {
                                                 downsampled_gray = img_gray;
                                             }
+
+                                            cv::Mat downsampled_blurred;
+
+                                            if (blur[level]!= -1)
+                                            {
+                                                const int gaus_blur_size = blur[level];
+                                                cv::GaussianBlur(downsampled_gray,downsampled_blurred,cv::Size(gaus_blur_size,gaus_blur_size),0);
+                                            }
+                                            else
+                                            {
+                                                downsampled_blurred = downsampled_gray;
+                                            }
+
                                             const int rows = downsampled_gray.rows;
                                             const int cols = downsampled_gray.cols;
 
@@ -411,7 +457,7 @@ namespace aslam
                                             vis_image.SetSize(rows,cols);
                                             
                                             Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(rows , cols);
-                                            cv::cv2eigen(downsampled_gray,eigen_mat);
+                                            cv::cv2eigen(downsampled_blurred,eigen_mat);
                                             double *array = eigen_mat.data();
                                             vis_image.SetTo(array);
                                             FitSymmetry(
@@ -429,121 +475,48 @@ namespace aslam
                                                 scaling_factor
                                             );
 
+
+                                            // DebugScreen(
+                                            // start_target_frame,
+                                            // num_samples_symmetry,
+                                            // num_meta_samples_axis,
+                                            // samples_targetframe,
+                                            // meta_locations,
+                                            // vis_image,
+                                            // &start_position,
+                                            // &cost,
+                                            // camera_,
+                                            // img_color,
+                                            // T,
+                                            // &mean_sym
+                                            // );
+                                            // cv::waitKey(20000);
+
                                             
-                                        }
+                                        }             
+                                        cv::Point2f end_position = cv::Point2f(start_position.x(),start_position.y());
+                                        double norm = cv::norm(end_position-start_position_cv);
 
-                                        // vis::Vec2f dummy_position;
-                                        // DebugScreen(
-                                        //     start_target_frame,
-                                        //     num_samples_symmetry,
-                                        //     num_meta_samples_axis,
-                                        //     samples_targetframe,
-                                        //     meta_locations,
-                                        //     vis_image,
-                                        //     &start_position,
-                                        //     &cost,
-                                        //     camera_,
-                                        //     img_color,
-                                        //     T,
-                                        //     &mean_sym
-                                        // );
-
-                                        
-
-                                        // cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
-
-                                        double min_sym = 0.2;
-                                        double max_sym = 0.45;
-                                        int min_circle = 2;
-                                        int max_circle = 10;
-                                        
-                                        if (mean_sym < min_sym)
+                                        if (norm < refine_magnitude_reject)
                                         {
-                                            mean_sym = min_sym;
+                                            cv::circle(img_color, end_position,0, cv::Scalar(255,0,0),1); 
+                                            Eigen::Vector2d end_position_eigen = Eigen::Vector2d(end_position.x,end_position.y);
+                                            new_obslist_[j].updateImagePoint(index_reprojection,end_position_eigen);
+
                                         }
-                                        else if (mean_sym > max_sym)
-                                        {
-                                            mean_sym = max_sym;
-                                        }
 
-                                        int circle_size = static_cast<int>((mean_sym-min_sym)/(max_sym-min_sym)*(max_circle-min_circle)+min_circle);
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),1); 
-
-                                        // cv::imwrite("test_downsample.png",img_color);
-                                        // SM_INFO_STREAM("Mean symmetry: "<<mean_sym);
-                                        // if (mean_sym < 1.0)
-                                        // {
-                                        //     // deltille refinement
-                                        //     // std::vector<cv::Point2f> starting_point;
-                                        //     // // starting_point.push_back(cv::Point2f(start_position.y(),start_position.x()));
-                                        //     // std::vector<orp::calibration::deltille::SaddlePoint> refined;
-                                        //     // orp::calibration::deltille::getInitialSaddleLocations(img_gray, starting_point);
-                                        //     // orp::calibration::deltille::PolynomialSaddleDetectorContext<orp::calibration::deltille::SaddlePoint> detector = orp::calibration::deltille::PolynomialSaddleDetectorContext<orp::calibration::deltille::SaddlePoint>(img_gray);
-                                        //     // detector.findSaddles(refined);
-
-                                        //     // std::vector<orp::calibration::deltille::SaddlePoint> refined;
-                                        //     // orp::calibration::deltille::PolynomialFit<orp::calibration::deltille::SaddlePoint> tempFitting;
-                                        //     // tempFitting.initSaddleFitting(20);
-                                        //     // cv::Mat temp;
-                                        //     // cv::filter2D(img_gray, temp, cv::DataType<float>::depth,
-                                        //     //             tempFitting.getSmoothingKernel());
-                                        //     // tempFitting.saddleSubpixelRefinement(temp, starting_point, refined, 5, true);
-
-                                        //     // // int num_clusters = 0;
-                                        //     // // std::vector<int> cluster_ids;
-
-                                        //     // // std::vector<orp::calibration::deltille::SaddlePoint::ClusterDescType> cluster_stats;
-                                        //     // // orp::calibration::deltille::clusterPoints2(refined, img_gray.size(), cluster_ids, cluster_stats, num_clusters, 1.0);
-
-                                        //     for (int clust_id  =  0; clust_id < refined.size(); clust_id ++)
-                                        //     {
-                                        //         SM_INFO_STREAM("x,y: "<<refined[clust_id].x<<", "<<refined[clust_id].y);
-                                        //         cv::circle(img_color, cv::Point2f(float(refined[clust_id].x),float(refined[clust_id].y)),4, cv::Scalar(0,255,0),1);
-                                        //         // if (!std::isnan(refined[clust_id].x)  && refined[clust_id].x < std::numeric_limits<double>::infinity())
-                                        //     //     {
-                                        //     //     SM_INFO_STREAM("x,y: "<<refined[clust_id].x<<", "<<refined[clust_id].y);
-
-                                        //     }
-                                        //     cv::imwrite("test_deltille.png",img_color);
-                                        //     // }
-
-                                        //     // SM_INFO_STREAM("Refined using deltille: "<<refined);
-
-
-                                        //     // FitSymmetry(
-                                        //     // start_target_frame,
-                                        //     // num_samples_symmetry,
-                                        //     // num_meta_samples_axis,
-                                        //     // samples_targetframe,
-                                        //     // meta_locations,
-                                        //     // vis_image,
-                                        //     // &start_position,
-                                        //     // &cost,
-                                        //     // camera_,
-                                        //     // img_color,
-                                        //     // T
-                                        //     // );
-                                        //     // quads(0,index_reprojection) = start_position(0);
-                                        //     // quads(1,index_reprojection) = start_position(1);
-                                        //     // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(255,0,0),1); 
-
-                                        // }
-                                        // else
-                                        // {
-                                        //     cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
-                                        //     quads(0,index_reprojection) = tagCorners.at<float>(0,0);
-                                        //     quads(1,index_reprojection) = tagCorners.at<float>(0,1);
-                                        //     cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(255,0,0),1); 
-
-
-                                        // }
-                                        
-                                        // SM_INFO_STREAM("Refined to: "<<start_position);
-
-                                    } 
-
-                                    new_obslist_[j].updateImagePoint(index_reprojection,quads.col(index_reprojection));
                                 }
+                                else
+                                {
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),1); 
+                                    cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,255,0),1); 
+                                    Eigen::Vector2d end_position_eigen = Eigen::Vector2d(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                    new_obslist_[j].updateImagePoint(index_reprojection,end_position_eigen);
+                                }
+
+                                }
+
                             }
 
                         }
@@ -653,7 +626,6 @@ namespace aslam
                 num_corners_end += outCornerIdx_.size();
             }
             SM_INFO_STREAM("Ended tartan calib with "<<num_corners_end<<" corners.");
-            camera_->setParameters(cam_params,true,true,true);
             
             std::ofstream myfile;
             myfile.open (log_file,std::ios_base::app);

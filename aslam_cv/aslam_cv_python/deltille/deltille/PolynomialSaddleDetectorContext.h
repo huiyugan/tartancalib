@@ -43,9 +43,9 @@ namespace deltille{
 const double rectangular_saddle_threshold = 1.0 / 20;
 // const double rectangular_saddle_threshold = 0.0;
 const int deltille_stability_kernel_size_increase = 1;
-const double deltille_stability_threshold = 15;
+const double deltille_stability_threshold = 0.1;
 const double working_resolution = 3000.0;
-const int half_kernel_size = 15;
+const int half_kernel_size = 3;
 
 template <typename SaddlePointType, typename InputImageType = uint8_t,
           typename FloatImageType = float>
@@ -229,10 +229,11 @@ public:
                    fullScaleLocations[c].y, std::abs(pt.a2), pt.det);
           }
 #endif
+
           obs.corner_locations[c].x = -1.0f;
           obs.corner_locations[c].y = -1.0f;
-          obs.board.at<int>(int(c / obs.board.cols), int(c % obs.board.cols)) =
-              -1;
+          // obs.board.at<int>(int(c / obs.board.cols), int(c % obs.board.cols)) =
+          //     -1;
         } else {
           obs.corner_locations[c].x = float(pt.x);
           obs.corner_locations[c].y = float(pt.y);

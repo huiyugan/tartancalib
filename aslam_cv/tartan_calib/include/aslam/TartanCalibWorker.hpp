@@ -37,11 +37,8 @@
 #include <random>
 // #include "deltille/utils.h"
 
-
-
 namespace aslam
 {
-    
     namespace cameras
     {
       enum class DebugMode 
@@ -93,7 +90,7 @@ namespace aslam
       public boost::enable_shared_from_this<TartanCalibWorker<C>>
     {
         public:  
-            TartanCalibWorker(C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
+            TartanCalibWorker(const C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
             : obslist_(obslist),
             gd_(gd),
             target_(gd.target()),
@@ -246,11 +243,11 @@ namespace aslam
             aslam::cameras::GridCalibrationTargetObservation obs_;
             std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist_;
             int num_frames_,num_views_,num_points_,in_width_,in_height_,xyz_idx_,num_corners_;
-            int num_corners_start =0;
-            int num_corners_end =0;
+            int num_corners_start = 0;
+            int num_corners_end = 0;
             float rot_x_, rot_z_;
             bool verbose_,empty_pixels_;
-            C* camera_;
+            const C* camera_;
 
             // used to create remap
             Eigen::VectorXf xyz_ray_;
@@ -272,13 +269,15 @@ namespace aslam
             Eigen::MatrixXd cam_params;
 
             int minInitCornersAutoComplete = 24; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
-            float minTagSizeAutoComplete = 0; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
+            float minTagSizeAutoComplete = 12; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
             float correction_threshold = 20.0; // number of pixel offset between reprojection and detection we allow
-            float minResizewindowSize = 2;
+            float minResizewindowSize = 1;
             float maxResizewindowSize = 10;
 
             bool harris_check = true;
-            bool start_from_subpix = true;
+            bool start_from_subpix = false;
+            double refine_magnitude_reject = 5.0;
+            bool symmetry_refinement = true;
     };
     }
 }

@@ -100,7 +100,7 @@ bool DebugScreen(
       *mean_sym = static_cast<double>(tempVal.val[0]);
 
       // cv::waitKey(20000);
-
+      cv::imwrite("symmetry_test.png",symmetry_img*255);
       // SM_INFO_STREAM("Best target: "<<start_target_frame +  meta_locations[minLoc.x][minLoc.y]);
       *out_position = TargetToImageFrame(start_target_frame +  meta_locations[minLoc.x][minLoc.y], T_target_to_euc, camera);
     }  
@@ -147,9 +147,9 @@ bool FitSymmetry(
       // *out_position = TargetToImageFrame(intermediate_target_frame,T_target_to_euc,camera);
 
       constexpr int kMaxIterationCount = 30;
-      double norm_threshold = 0.0001;
+      double norm_threshold = 0.005;
       for (int iteration = 0; iteration < kMaxIterationCount; ++ iteration) {
-        lambda = -1;
+        // lambda = -1;
 
        
       //   // *out_position = TargetToImageFrame(start_target_frame, T_target_to_euc, camera);
@@ -164,7 +164,8 @@ bool FitSymmetry(
       // // Initialize lambda?
       // SM_INFO_STREAM("Meta iteration: "<<iteration);
       if (lambda < 0) {
-        lambda = 0.001f * (1.f / kDim) * H.diagonal().sum();
+        // lambda = 0.001f * (1.f / kDim) * H.diagonal().sum();
+        lambda = 1000;
       }
 
     
@@ -281,9 +282,6 @@ double TargetToSymmetry(
         target_location_pos = sample_pair[0] + target_location;
         target_location_neg = sample_pair[1] + target_location; 
 
-        // SM_INFO_STREAM("Target location pos: "<<target_location_pos);
-        // SM_INFO_STREAM("Target location neg: "<<target_location_neg);
-
         pos_3D =  T_target_to_euc*target_location_pos;
         neg_3D =  T_target_to_euc*target_location_neg;
 
@@ -297,14 +295,14 @@ double TargetToSymmetry(
         intensity_neg = image.InterpolateBilinear(sample_neg);
 
         C_symmetry += (intensity_pos-intensity_neg)*(intensity_pos-intensity_neg);
-        // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),5, cv::Scalar(255,0,0),1);
-        // cv::circle(cv_img, cv::Point2f(sample_neg(1),sample_neg(0)),5, cv::Scalar(0,255,0),1);
-       
+        // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),1, cv::Scalar(255,255,255),1);
+        // cv::circle(cv_img, cv::Point2f(sample_neg(1),sample_neg(0)),1, cv::Scalar(255,255,255),1);
 
         // cv::imshow("test",cv_img);
         // cv::waitKey(20000);
 
       }
+      
       return C_symmetry;
 
     }
