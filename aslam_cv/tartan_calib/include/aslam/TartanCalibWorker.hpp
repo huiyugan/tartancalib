@@ -32,7 +32,7 @@
 #include "implementation/symmetry_refinement.h"
 #include "implementation/tartan_refinement.h"
 #include "implementation/symmetry_fit.h"
-#include "deltille/PolynomialSaddleDetectorContext.h"
+// #include "deltille/PolynomialSaddleDetectorContext.h"
 #include <aslam/cameras/CameraGeometryBase.hpp>
 #include <random>
 // #include "deltille/utils.h"
@@ -269,8 +269,8 @@ namespace aslam
             Eigen::MatrixXd cam_params;
 
             int minInitCornersAutoComplete = 24; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
-            float minTagSizeAutoComplete = 12; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
-            float correction_threshold = 20.0; // number of pixel offset between reprojection and detection we allow
+            float minTagSizeAutoComplete = 0; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
+            float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
             float minResizewindowSize = 1;
             float maxResizewindowSize = 10;
 

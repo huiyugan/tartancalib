@@ -43,7 +43,13 @@ Vec2f TargetToImageFrame(
 {
   Eigen::VectorXd distorted_pixel_location;
   Eigen::VectorXd sample_3D = T_target_to_euc*target_location; 
-  camera->vsEuclideanToKeypoint(sample_3D,distorted_pixel_location);
+
+  Eigen::Vector3d sample_input;
+  sample_input(0) = sample_3D(0);
+  sample_input(1) = sample_3D(1);
+  sample_input(2) = sample_3D(2);
+
+  camera->vsEuclideanToKeypoint(sample_input,distorted_pixel_location);
   return Vec2f(distorted_pixel_location(0),distorted_pixel_location(1));
 }
 
@@ -193,9 +199,7 @@ bool FitSymmetry(
         test_target_frame(0) -= x(0,0);
         test_target_frame(1) -= x(1,0);
       
-
         double test_cost = TargetToSymmetry(image, T_target_to_euc, camera, test_target_frame,samples_targetframe,num_samples_symmetry,cv_image,scaling_factor);
-
         // SM_INFO_STREAM("x: "<<x);
         
       
@@ -279,14 +283,30 @@ double TargetToSymmetry(
       {
         vector<Eigen::VectorXd> sample_pair = samples_targetframe[i];
         
-        target_location_pos = sample_pair[0] + target_location;
-        target_location_neg = sample_pair[1] + target_location; 
-
+        target_location_pos = target_location;
+        target_location_pos(0) += sample_pair[0](0);
+        target_location_pos(1) += sample_pair[0](1);
+        
+        target_location_neg = target_location;
+        target_location_neg(0) += sample_pair[1](0);
+        target_location_neg(1) += sample_pair[1](1);
+        
         pos_3D =  T_target_to_euc*target_location_pos;
         neg_3D =  T_target_to_euc*target_location_neg;
 
-        camera->vsEuclideanToKeypoint(pos_3D,image_pos);
-        camera->vsEuclideanToKeypoint(neg_3D,image_neg);
+        Eigen::Vector3d pos_3D_input, neg_3D_input;
+
+        pos_3D_input(0) = pos_3D(0);
+        pos_3D_input(1) = pos_3D(1);
+        pos_3D_input(2) = pos_3D(2);
+
+        neg_3D_input(0) = neg_3D(0);
+        neg_3D_input(1) = neg_3D(1);
+        neg_3D_input(2) = neg_3D(2);
+
+
+        camera->vsEuclideanToKeypoint(pos_3D_input,image_pos);
+        camera->vsEuclideanToKeypoint(neg_3D_input,image_neg);
         
         Vec2f sample_pos = scaling_factor*Vec2f(image_pos(1),image_pos(0));   
         Vec2f sample_neg = scaling_factor*Vec2f(image_neg(1),image_neg(0)); 
@@ -323,6 +343,7 @@ double TargetToJacobian(
     double scaling_factor
     )
     {
+      
       H->triangularView<Eigen::Upper>().setZero();
       b->setZero();
       double C_symmetry = 0;
@@ -330,60 +351,66 @@ double TargetToJacobian(
       double intensity_pos, intensity_neg;
       Eigen::Matrix<double, 1, 2> gradient_pos, gradient_neg, gradient_pos_, gradient_neg_;
       Eigen::VectorXd distorted_pixel_location;
-      Eigen::MatrixXd Jacobian_cam_pos, Jacobian_cam_neg, Jacobian_cam_pos_T, Jacobian_cam_neg_T, Jacobian_transformation;
+      Eigen::MatrixXd Jacobian_cam_pos, Jacobian_cam_neg;
+      Eigen::Matrix<double,2,3> Jacobian_cam_pos_T, Jacobian_cam_neg_T;
+      Eigen::Matrix<double,3,2> Jacobian_transformation; 
       Eigen::Vector2d Jacobian_raw= Eigen::Vector2d::Zero();
-
       double learning_rate = 1.0;
       for (int i = 0; i < num_samples_symmetry ; i++)
       {
         vector<Eigen::VectorXd> sample_pair = samples_targetframe[i];
         Eigen::VectorXd target_location_pos, target_location_neg, pos_3D, neg_3D, image_pos, image_neg;
-        
 
-        target_location_pos = sample_pair[0] + target_location;
-        target_location_neg = sample_pair[1] + target_location;
+        // target_location_pos = sample_pair[0] + target_location;
+        // target_location_neg = sample_pair[1] + target_location;
+        target_location_pos = target_location;
+        target_location_pos(0) += sample_pair[0](0);
+        target_location_pos(1) += sample_pair[0](1);
+        
+        target_location_neg = target_location;
+        target_location_neg(0) += sample_pair[1](0);
+        target_location_neg(1) += sample_pair[1](1);
 
         pos_3D =  T_target_to_euc*target_location_pos;
         neg_3D =  T_target_to_euc*target_location_neg;
 
-        // jacobian of camera model, image coordinates w.r.t. euclidean coordinates
-        camera->vsEuclideanToKeypoint(pos_3D,image_pos,Jacobian_cam_pos);
-        camera->vsEuclideanToKeypoint(neg_3D,image_neg,Jacobian_cam_neg);
+        Eigen::Vector3d pos_3D_input, neg_3D_input;
 
+        pos_3D_input(0) = pos_3D(0);
+        pos_3D_input(1) = pos_3D(1);
+        pos_3D_input(2) = pos_3D(2);
+
+        neg_3D_input(0) = neg_3D(0);
+        neg_3D_input(1) = neg_3D(1);
+        neg_3D_input(2) = neg_3D(2);
+        // jacobian of camera model, image coordinates w.r.t. euclidean coordinates
+        camera->vsEuclideanToKeypoint(pos_3D_input,image_pos,Jacobian_cam_pos);
+        camera->vsEuclideanToKeypoint(neg_3D_input,image_neg,Jacobian_cam_neg);
         // getting the transpose
-        Jacobian_cam_pos_T = Jacobian_cam_pos.transpose();
-        Jacobian_cam_neg_T = Jacobian_cam_neg.transpose();
-        
+        Jacobian_cam_pos_T = Jacobian_cam_pos;
+        Jacobian_cam_neg_T = Jacobian_cam_neg;
         Vec2f sample_pos = scaling_factor*Vec2f(image_pos(1),image_pos(0));   
         Vec2f sample_neg = scaling_factor*Vec2f(image_neg(1),image_neg(0)); 
-
         // image gradients
         image.InterpolateBilinearWithJacobian(sample_pos, &intensity_pos, &gradient_pos);
         image.InterpolateBilinearWithJacobian(sample_neg, &intensity_neg, &gradient_neg);
-
         gradient_pos_(0,0) = gradient_pos(0,1);
         gradient_pos_(0,1) = gradient_pos(0,0);
-
         gradient_neg_(0,0) = gradient_neg(0,1);
         gradient_neg_(0,1) = gradient_neg(0,0);
 
-
         // Jacobian of transformation between euclidean and target coordinates
         Jacobian_transformation = T_target_to_euc.block<3,2>(0,0);
-        
-        MatrixXd jacobian_pos = gradient_pos_*Jacobian_cam_pos_T*Jacobian_transformation;
-        MatrixXd jacobian_neg = gradient_neg_*Jacobian_cam_neg_T*Jacobian_transformation;
-
+        Eigen::Vector2d jacobian_pos = gradient_pos_*Jacobian_cam_pos_T*Jacobian_transformation;
+        Eigen::Vector2d jacobian_neg = gradient_neg_*Jacobian_cam_neg_T*Jacobian_transformation;
         // SM_INFO_STREAM("Suggested changes: "<<(jacobian_pos-jacobian_neg));
         Jacobian_raw.setZero();
         Jacobian_raw = (jacobian_pos-jacobian_neg);
         *Jacobian += (intensity_pos-intensity_neg)*(jacobian_pos-jacobian_neg);
-
         C_symmetry += (intensity_pos-intensity_neg)*(intensity_pos-intensity_neg);
         residual = (intensity_pos-intensity_neg);
         // cv::circle(cv_img, cv::Point2f(sample_pos(1),sample_pos(0)),3, cv::Scalar(255,0,0),2);
         // cv::circle(cv_img, cv::Point2f(sample_neg(1),sample_neg(0)),3, cv::Scalar(255,0,0),2);
-
         // SM_INFO_STREAM("Positive location: "<<sample_pos);
         // SM_INFO_STREAM("Negative location: "<<sample_neg);
 
@@ -391,8 +418,8 @@ double TargetToJacobian(
         // cv::waitKey(20000);
         Eigen::MatrixXd Jacobian_mat = Jacobian_raw;
         // SM_INFO_STREAM("Jacobian RAW"<<Jacobian_mat);
-        H->triangularView<Eigen::Upper>() += learning_rate*Jacobian_mat.transpose() * Jacobian_mat;
-        *b += residual * Jacobian_mat*learning_rate;
+        H->triangularView<Eigen::Upper>() += learning_rate*Jacobian_raw * Jacobian_raw.transpose();
+        *b += residual * Jacobian_raw*learning_rate;
       }
       
       return C_symmetry;

@@ -128,6 +128,7 @@ namespace aslam
             Eigen::MatrixXd all_target_original,all_target_transformed;
 
             all_target_original = target_->points().transpose();
+
             all_target_original.conservativeResize(4,all_target_original.cols());
             
 
@@ -191,7 +192,7 @@ namespace aslam
 
                 // for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
                 // {
-                //     // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 5,cv::Scalar(255,0,0),2);   
+                //     cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 5,cv::Scalar(255,0,0),2);   
                 // }
 
                 // we are wiping this entry in new_obslist_ because:
@@ -201,6 +202,9 @@ namespace aslam
                 {
                     new_obslist_[j].removeImagePoint(corner_idx);
                 }
+
+
+
                 if (outCornerIdx_.size() >= minInitCornersAutoComplete)
                 { 
                     // retrieve quad points from image
@@ -216,15 +220,21 @@ namespace aslam
                     int num_quads = quads.cols()/4;
 
                     cv::Point2f pixel;
-                    Eigen::MatrixXd target_image_frame(2,num_target_corners), target_image_frame_trimmed(2,num_target_corners);
+                    Eigen::MatrixXd target_image_frame(2,num_target_corners), target_image_frame_trimmed;
 
                     cv::Mat tagCorners(1, 2, CV_32F);
                     for (int i=0; i< num_target_corners; i++)
                     {
-                        camera_->vsEuclideanToKeypoint(all_target_transformed.col(i).cast<double>(),distorted_pixel_location_);
+                        Eigen::Vector3d target_input;
+                        target_input(0) = static_cast<double>(all_target_transformed.coeff(0,i));
+                        target_input(1) = static_cast<double>(all_target_transformed.coeff(1,i));
+                        target_input(2) = static_cast<double>(all_target_transformed.coeff(2,i));
+
+                        camera_->vsEuclideanToKeypoint(target_input,distorted_pixel_location_);
                         // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,0,0),2);    
                         target_image_frame.col(i) = distorted_pixel_location_;
                     }
+
                     target_image_frame_trimmed = target_image_frame;
                     target_image_frame_trimmed.conservativeResize(2,num_target_corners_trimmed);
 
@@ -250,7 +260,6 @@ namespace aslam
                                 }
                             }
                         }
-
                         
                         /// TODO: Make threshold tunable
                         /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
@@ -258,7 +267,6 @@ namespace aslam
                         // at this point we override Kalibr corners for the adaptive subpixel refinement
                         if (norm_quad < correction_threshold && quad_idxs.size() == 4 )
                         {
-                            // SM_INFO_STREAM("K: "<<k);
 
                             for (int q = 0; q <4; q++)
                             {
@@ -274,7 +282,6 @@ namespace aslam
                                 std::iota(idx.begin(),idx.end(),0);
                                 std::stable_sort(idx.begin(), idx.end(),[&norms_target](size_t i1, size_t i2) {return norms_target[i1] <norms_target[i2];});
                                 index_target = idx[1];
-
                                 float tag_size = sqrt(norms_target(index_target));
                                 if (tag_size > minTagSizeAutoComplete)
                                 {
@@ -347,7 +354,6 @@ namespace aslam
                                             start_target_frame = out_T_t_c.T()*euclidean_4d;
                                         }
 
-                                        
                                         for (int sample_it = 0; sample_it < num_samples_symmetry; sample_it++) 
                                         {
                                             // step 1: get sample in target space
@@ -393,7 +399,6 @@ namespace aslam
 
                                         double x_start = static_cast<double>(-window_half_size_meta);
                                         double y_start = static_cast<double>(window_half_size_meta);
-
                                         for (int row_idx = 0; row_idx < num_meta_samples_axis; row_idx++)
                                         {
                                             for (int col_idx = 0; col_idx < num_meta_samples_axis; col_idx++)
@@ -414,20 +419,17 @@ namespace aslam
                                         vis::Vec2f start_position(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
                                         cv::Point2f start_position_cv = cv::Point2f(start_position.x(),start_position.y());
 
-
                                         // SM_INFO_STREAM("Start: "<<start_position);
                                         double mean_sym = 0;
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),0, cv::Scalar(0,0,255),1); 
+                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),5, cv::Scalar(0,0,255),1); 
 
-                                        std::vector<double> levels = {1.0,1.0,1.0};
-                                        std::vector<int> blur = {41,21,-1};
-                                        // std::vector<double> levels = {1.0};
-                                        // std::vector<int> blur = {-1};
+                                        // std::vector<double> levels = {1.0,1.0,1.0};
+                                        // std::vector<int> blur = {41,21,-1};
+                                        std::vector<double> levels = {1.0};
+                                        std::vector<int> blur = {-1};
                                         cv::Mat downsampled_gray;
-
                                         for (int level = 0 ; level < levels.size() ; level++ )
                                         {      
-
                                             const double scaling_factor = levels[level];
                                             if (scaling_factor != 1.0)
                                             {
@@ -455,11 +457,12 @@ namespace aslam
 
                                             vis::Image<double> vis_image;
                                             vis_image.SetSize(rows,cols);
-                                            
+
                                             Eigen::MatrixXd eigen_mat = Eigen::MatrixXd(rows , cols);
                                             cv::cv2eigen(downsampled_blurred,eigen_mat);
                                             double *array = eigen_mat.data();
                                             vis_image.SetTo(array);
+                                            // SM_INFO_STREAM("Before fitsymmetry");
                                             FitSymmetry(
                                                 start_target_frame,
                                                 num_samples_symmetry,
@@ -474,6 +477,7 @@ namespace aslam
                                                 T,
                                                 scaling_factor
                                             );
+                                            // SM_INFO_STREAM("After fitsymmetry");
 
 
                                             // DebugScreen(
@@ -497,9 +501,11 @@ namespace aslam
                                         cv::Point2f end_position = cv::Point2f(start_position.x(),start_position.y());
                                         double norm = cv::norm(end_position-start_position_cv);
 
+
+
                                         if (norm < refine_magnitude_reject)
                                         {
-                                            cv::circle(img_color, end_position,0, cv::Scalar(255,0,0),1); 
+                                            cv::circle(img_color, end_position,0, cv::Scalar(0,255,0),1); 
                                             Eigen::Vector2d end_position_eigen = Eigen::Vector2d(end_position.x,end_position.y);
                                             new_obslist_[j].updateImagePoint(index_reprojection,end_position_eigen);
 
