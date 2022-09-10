@@ -137,6 +137,7 @@ def parseArgs():
     outputSettings.add_argument('--log_dest', type=str, dest='logDest',default='log', help='Logging for later analysis.')
     outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=70, help='Logging for later analysis.')
     outputSettings.add_argument('--outputMatlab',action='store_true',dest='outputMatlab',help='Outputs a matlab matrix for use in babelcalib.')
+    outputSettings.add_argument('--save_dir', type=str, dest='saveDir',default='/data/', help='All the data will be logged to this directory.')
 
     #print help if no argument is specified
     if len(sys.argv)==1:
@@ -463,7 +464,7 @@ def main():
 
                     for cam_id in range(0, numCams):
                         cam = cameraList[cam_id]                      
-                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
+                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections)
                         for obs in new_obs:
                             obsdb.addObservation(cam_id,obs)
                         obslistTartan[cam_id] = new_obs
@@ -537,17 +538,17 @@ def main():
                 
                 #write to file
                 bagtag = os.path.splitext(parsed.bagfile)[0]
-                resultFile = bagtag + '-'+parsed.logDest + str(iteration)  + "-camchain.yaml"
+                resultFile = parsed.saveDir  + '-'+parsed.logDest + str(iteration)  + "-camchain.yaml"
                 kcc.saveChainParametersYaml(calibrator, resultFile, graph)
                 print("Results written to file: {0}".format(resultFile))
                 
                 #save results to file
-                resultFileTxt = bagtag + '-'+parsed.logDest + str(iteration) + "-results-cam.txt"
+                resultFileTxt = parsed.saveDir  + '-'+parsed.logDest + str(iteration) + "-results-cam.txt"
                 kcc.saveResultTxt(calibrator, filename=resultFileTxt)
                 print("  Detailed results written to file: {0}".format(resultFileTxt))
                 
                 #generate report
-                reportFile = bagtag + '-'+parsed.logDest + str(iteration) +"-report-cam.pdf"
+                reportFile = parsed.saveDir  + '-'+parsed.logDest + str(iteration) +"-report-cam.pdf"
                 G=None; 
                 if numCams>1: 
                     G=graph
@@ -560,7 +561,7 @@ def main():
                 #     for cam_ in log.camera_:
                 #         print(cam_.projection().getParameters().flatten())
 
-                with open(parsed.logDest+'.pkl', 'w') as f:
+                with open(parsed.saveDir + parsed.logDest+'.pkl', 'w') as f:
                     dill.dump(tartanlogs, f)
                 
             except kcc.OptimizationDiverged:
