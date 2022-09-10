@@ -276,8 +276,8 @@ namespace aslam
 
             bool harris_check = true;
             bool start_from_subpix = false;
-            double refine_magnitude_reject = 5.0;
-            bool symmetry_refinement = true;
+            double refine_magnitude_reject = 8.0;
+            bool symmetry_refinement = false;
     };
     }
 }

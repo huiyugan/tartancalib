@@ -245,8 +245,10 @@ def main():
         restartAttempts=100
         initOutlierRejection=True
         removedOutlierCorners=list() 
+
         while True:
             try:
+                obsdb_init = copy.deepcopy(obsdb)
                 #compute initial guesses for the baselines, intrinsics
                 print("initializing initial guesses")
                 if len(cameraList)>1:
@@ -277,7 +279,7 @@ def main():
 
                     elif parsed.polarSetting == 2:
                         polar_object.mode = kcc.PolarOptions.RAND_BIN_PICK
-                        polar_object.numBins = 10
+                        polar_object.numBins = 50
 
                 calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman,polarObject=polar_object)
   
@@ -451,69 +453,72 @@ def main():
                 print("..................................................................")
                 print("")
                 print("Calibration complete.")
-
                 
-                obsdb = kcc.ObservationDatabase(parsed.max_delta_approxsync)
+                #obsdb_init is the obsdb that was used to train this model
+                tartanlogs.append(TartanLogging.TartanLogger(obsdb_init,[copy.deepcopy(cam_.geometry) for cam_ in calibrator.cameras],kcc.getAllPointStatistics(calibrator,0)))
                 
-                for cam_id in range(0, numCams):
-                    cam = cameraList[cam_id]                      
-                    new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
-                    for obs in new_obs:
-                        obsdb.addObservation(cam_id,obs)
-                    obslistTartan[cam_id] = new_obs
                 
-                # saving matlab matrix for use in Babelcalib
-                if (parsed.outputMatlab and iteration == (num_iterations-2)):
-                    print("Saving to MatLab matrix")
-                    timestamps = obsdb.getAllViewTimestamps()
-                    num_frames_output = 100
-                    # random.shuffle(timestamps)
-                    # timestamps = timestamps[0:num_frames_output]
-                    # add all observed corners
-                    corners_mat = []
-                
-                    for view_id, timestamp in enumerate(timestamps):
-                        #add new batch problem
-                        obs_tuple = obsdb.getAllObsAtTimestamp(timestamp)    
-                        obs = obs_tuple[0][1]
-                        #assumption: only single-cam use
-                        x = obs.getCornersImageFrame()
-                        x = x.transpose()
-                        corner_idxs = obs.getCornersIdx()
-                        
-                        num_corners = np.shape(x)[1]
-                        cspond = np.ones((2,num_corners))
-                        # cspond[0,:] = np.arange(1,num_corners+1)
-                        # cspond[1,:] = corner_idxs+1
-                        cspond[0,:] = corner_idxs+1
+                if (iteration < (num_iterations-1)):
+                    obsdb = kcc.ObservationDatabase(parsed.max_delta_approxsync)
 
-                        corners_mat.append({"x":x,"cspond":cspond})
-
-                    # add board definition
-                    num_corners = cameraList[0].ctarget.detector.target().size()
-                    x_board = np.zeros((2,num_corners))
-                    for q in range(num_corners):
-                        x_board[0,q] = cameraList[0].ctarget.detector.target().point(q)[0]
-                        x_board[1,q] = cameraList[0].ctarget.detector.target().point(q)[1]
-
-                    # identity because we only have one board, so it's at the centre of the global coordinate frame
-                    Rt = np.array([[1.0,0,0,0],[0,1.0,0,0],[0,0,1.0,0]])
-
-                    # save corners mat
-                    corners_mat_ = np.empty((len(corners_mat),), dtype=np.object)
-                    for i in range(len(corners_mat)):
-                        corners_mat_[i] = corners_mat[i]
+                    for cam_id in range(0, numCams):
+                        cam = cameraList[cam_id]                      
+                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,["originalprojection"])
+                        for obs in new_obs:
+                            obsdb.addObservation(cam_id,obs)
+                        obslistTartan[cam_id] = new_obs
                     
+                    # saving matlab matrix for use in Babelcalib
+                    if (parsed.outputMatlab and iteration == (num_iterations-2)):
+                        print("Saving to MatLab matrix")
+                        timestamps = obsdb.getAllViewTimestamps()
+                        num_frames_output = 100
+                        # random.shuffle(timestamps)
+                        # timestamps = timestamps[0:num_frames_output]
+                        # add all observed corners
+                        corners_mat = []
+                    
+                        for view_id, timestamp in enumerate(timestamps):
+                            #add new batch problem
+                            obs_tuple = obsdb.getAllObsAtTimestamp(timestamp)    
+                            obs = obs_tuple[0][1]
+                            #assumption: only single-cam use
+                            x = obs.getCornersImageFrame()
+                            x = x.transpose()
+                            corner_idxs = obs.getCornersIdx()
+                            
+                            num_corners = np.shape(x)[1]
+                            cspond = np.ones((2,num_corners))
+                            # cspond[0,:] = np.arange(1,num_corners+1)
+                            # cspond[1,:] = corner_idxs+1
+                            cspond[0,:] = corner_idxs+1
 
-                    scipy.io.savemat('corners.mat',{"corners":corners_mat})    
-                    # scipy.io.savemat('corners.mat',{"corners":{"x":x_s_,"csponds":csponds_}})    
+                            corners_mat.append({"x":x,"cspond":cspond})
 
-                    # save board def mat
-                    scipy.io.savemat('board.mat',{"boards":{"Rt":Rt,"X":x_board}})
+                        # add board definition
+                        num_corners = cameraList[0].ctarget.detector.target().size()
+                        x_board = np.zeros((2,num_corners))
+                        for q in range(num_corners):
+                            x_board[0,q] = cameraList[0].ctarget.detector.target().point(q)[0]
+                            x_board[1,q] = cameraList[0].ctarget.detector.target().point(q)[1]
+
+                        # identity because we only have one board, so it's at the centre of the global coordinate frame
+                        Rt = np.array([[1.0,0,0,0],[0,1.0,0,0],[0,0,1.0,0]])
+
+                        # save corners mat
+                        corners_mat_ = np.empty((len(corners_mat),), dtype=np.object)
+                        for i in range(len(corners_mat)):
+                            corners_mat_[i] = corners_mat[i]
+                        
+
+                        scipy.io.savemat('corners.mat',{"corners":corners_mat})    
+                        # scipy.io.savemat('corners.mat',{"corners":{"x":x_s_,"csponds":csponds_}})    
+
+                        # save board def mat
+                        scipy.io.savemat('board.mat',{"boards":{"Rt":Rt,"X":x_board}})
 
 
-                
-                tartanlogs.append(TartanLogging.TartanLogger(obsdb,[copy.deepcopy(cam_.geometry) for cam_ in calibrator.cameras],kcc.getAllPointStatistics(calibrator,0)))
+               
 
                 #initialize the calibration graph
                 graph = kcc.MulticamCalibrationGraph(obsdb)

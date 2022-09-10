@@ -75,11 +75,12 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
             print("Settings to : "+ str(cam.projection().getParameters()))
         else:
             cam = evalCams[i]
+            print(str(cam.projection().getParameters()))
             obslist = evalObs[i]
             err = np.array(cam.getReprojectionErrors(evalObs[i]))
         print("err shape:"+str(np.shape(err)))
-        delete_idxs = get_outliers(err,4)
-        err = np.delete(err,delete_idxs,1)
+        # delete_idxs = get_outliers(err,4)
+        # err = np.delete(err,delete_idxs,1)
         num_points = np.shape(err)[0]
         print("err shape:"+str(np.shape(err)))
         num_points = len(err)
@@ -137,8 +138,8 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
         #             pl.clf()
 
 
-        img_points_x = np.delete(img_points_x,delete_idxs)
-        img_points_y = np.delete(img_points_y,delete_idxs)
+        # img_points_x = np.delete(img_points_x,delete_idxs)
+        # img_points_y = np.delete(img_points_y,delete_idxs)
         print("NUM POINTS: "+str(num_points))
         polars = []
         for j in range(num_points):
