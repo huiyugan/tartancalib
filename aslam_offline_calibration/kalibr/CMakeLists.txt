@@ -76,6 +76,7 @@ catkin_install_python(
     python/kalibr_calibrate_cameras
     python/tartan_calibrate
     python/tartan_visualize
+    python/tartan_analyze
     python/kalibr_visualize_distortion
     python/kalibr_calibrate_imu_camera
     python/kalibr_create_target_pdf
