@@ -14,11 +14,12 @@ from sm import PlotCollection
 from matplotlib.backends.backend_pdf import PdfPages
 import cv2 
 import glob, os
-
+import pandas as pd
 
 experiments_folder = '/data/experiments/'
 summary_file = 'summary.txt'
 nbins = 10
+csv_dir = '/data/experiments/experiments.csv'
 
 class Experiment:
     def __init__(self,log_file):
@@ -32,11 +33,11 @@ class Experiment:
         self.num_cams = int(Lines[2])
         self.model = Lines[3]
 
-
 def evaluate(cams, obsdb):
     
     err = np.array([])
-    polars = []
+    polars = [] 
+    total_num_points = 0
     for i, cam in enumerate(cams):
 
         # delete_idxs = get_outliers(err,4)
@@ -56,6 +57,8 @@ def evaluate(cams, obsdb):
         for j in range(num_points):
             ec_pnt = cam.keypointToEuclidean(np.array([[img_points_x[j]],[img_points_y[j]]])) 
             polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
+        
+        total_num_points += num_points
 
     polars = np.array(polars)
     polar_idxs = np.argsort(polars)
@@ -77,7 +80,7 @@ def evaluate(cams, obsdb):
     bin_avg_errs = np.delete(bin_avg_errs,empty_idxs)
 
 
-    return [np.mean(err),np.mean(bin_avg_errs)]
+    return [np.mean(err),np.mean(bin_avg_errs),total_num_points]
 
         # num_points = np.shape(err)[0]
         # num_points = len(err)
@@ -143,7 +146,7 @@ def get_metrics(experiment):
     tartan_err = evaluate(tartancams,tartanobs)
     kalibr_in_tartan_err = evaluate(kalibrcams,tartanobs)
 
-    
+    return kalibr_err[:2] + tartan_err[:2] + kalibr_in_tartan_err[:2] + [kalibr_err[-1]] + [tartan_err[-1]]
     # print("obs iteration:"+str(parsed.obs_it))
     # evalObsDb = tartanObs[int(parsed.obs_it)]
     # evalObs = [evalObsDb.observations[int(parsed.camids[i])] for i in range(num_evals)]
@@ -233,8 +236,17 @@ def main():
     log_files = glob.glob(experiments_folder+'/**/*.pkl')
     experiments = [Experiment(log_file) for log_file in log_files]
 
+    
+    column_names = ['log_dir','bag','target','num_cams','model','kalibr error','kalibr normalized err','tartan err','tartan normalized err','kalibr evaluated on tartan','kalibr on tartan normalized','kalibr num corners','tartan num corners']
+    df=pd.DataFrame(columns=column_names)
+
     for experiment in experiments:
         results = get_metrics(experiment)
+        df_entry = [experiment.dirname,experiment.bag,experiment.target,experiment.num_cams,experiment.model,results[0],results[1],results[2],results[3],results[4],results[5],results[6],results[7]]
+        df.loc[len(df.index)] = df_entry
+        print(df)
+        df.to_csv(csv_dir)
+
 
     # assert len(parsed.cams) == len(parsed.cams_it)
     # num_evals = len(parsed.cams)
