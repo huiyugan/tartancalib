@@ -464,7 +464,7 @@ def main():
 
                     for cam_id in range(0, numCams):
                         cam = cameraList[cam_id]                      
-                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections)
+                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,['none'])
                         for obs in new_obs:
                             obsdb.addObservation(cam_id,obs)
                         obslistTartan[cam_id] = new_obs
@@ -538,17 +538,17 @@ def main():
                 
                 #write to file
                 bagtag = os.path.splitext(parsed.bagfile)[0]
-                resultFile = parsed.saveDir  + '-'+parsed.logDest + str(iteration)  + "-camchain.yaml"
+                resultFile = parsed.saveDir  + parsed.logDest + str(iteration)  + "-camchain.yaml"
                 kcc.saveChainParametersYaml(calibrator, resultFile, graph)
                 print("Results written to file: {0}".format(resultFile))
                 
                 #save results to file
-                resultFileTxt = parsed.saveDir  + '-'+parsed.logDest + str(iteration) + "-results-cam.txt"
+                resultFileTxt = parsed.saveDir  + parsed.logDest + str(iteration) + "-results-cam.txt"
                 kcc.saveResultTxt(calibrator, filename=resultFileTxt)
                 print("  Detailed results written to file: {0}".format(resultFileTxt))
                 
                 #generate report
-                reportFile = parsed.saveDir  + '-'+parsed.logDest + str(iteration) +"-report-cam.pdf"
+                reportFile = parsed.saveDir  + parsed.logDest + str(iteration) +"-report-cam.pdf"
                 G=None; 
                 if numCams>1: 
                     G=graph
