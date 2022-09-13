@@ -18,7 +18,7 @@ import pandas as pd
 
 experiments_folder = '/data/final_experiments/'
 summary_file = 'summary.txt'
-nbins = 10
+nbins = 100
 csv_dir = '/data/final_experiments/experiments.csv'
 
 class Experiment:

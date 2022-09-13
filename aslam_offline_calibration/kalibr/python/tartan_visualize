@@ -5,7 +5,7 @@ import numpy as np
 import argparse
 import dill
 import matplotlib
-# matplotlib.use('pdf')
+matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import cv2
 import pylab as pl

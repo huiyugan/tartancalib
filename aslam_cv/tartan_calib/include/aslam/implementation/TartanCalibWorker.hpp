@@ -282,7 +282,7 @@ namespace aslam
                                 float tag_size = sqrt(norms_target(index_target));
                                 if (tag_size > minTagSizeAutoComplete)
                                 {
-                                    int refine_window_size = static_cast<int>(tag_size/4.0);
+                                    int refine_window_size = static_cast<int>(tag_size/2.5);
                                     int refine_raw = refine_window_size;
                                     if (refine_window_size < minResizewindowSize)
                                     {
@@ -297,11 +297,11 @@ namespace aslam
                                     //subpixel refinement
 
                                     // start from quads
-                                    tagCorners.at<float>(0,0) = quads.coeff(0,k*4+q);
-                                    tagCorners.at<float>(0,1) = quads.coeff(1,k*4+q);
+                                    // tagCorners.at<float>(0,0) = quads.coeff(0,k*4+q);
+                                    // tagCorners.at<float>(0,1) = quads.coeff(1,k*4+q);
                                     // start from reprojections
-                                    // tagCorners.at<float>(0,0) = target_image_frame.coeff(0,index_reprojection);
-                                    // tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
+                                    tagCorners.at<float>(0,0) = target_image_frame.coeff(0,index_reprojection);
+                                    tagCorners.at<float>(0,1) = target_image_frame.coeff(1,index_reprojection);
 
                                     // cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,0,255),2);    
                                     
@@ -460,37 +460,37 @@ namespace aslam
                                             double *array = eigen_mat.data();
                                             vis_image.SetTo(array);
                                             // SM_INFO_STREAM("Before fitsymmetry");
-                                            // FitSymmetry(
-                                            //     start_target_frame,
-                                            //     num_samples_symmetry,
-                                            //     num_meta_samples_axis,
-                                            //     samples_targetframe,
-                                            //     meta_locations,
-                                            //     vis_image,
-                                            //     &start_position,
-                                            //     &cost,
-                                            //     camera_,
-                                            //     img_color,
-                                            //     T,
-                                            //     scaling_factor
-                                            // );
+                                            FitSymmetry(
+                                                start_target_frame,
+                                                num_samples_symmetry,
+                                                num_meta_samples_axis,
+                                                samples_targetframe,
+                                                meta_locations,
+                                                vis_image,
+                                                &start_position,
+                                                &cost,
+                                                camera_,
+                                                img_color,
+                                                T,
+                                                scaling_factor
+                                            );
                                             // SM_INFO_STREAM("After fitsymmetry");
 
 
-                                            DebugScreen(
-                                            start_target_frame,
-                                            num_samples_symmetry,
-                                            num_meta_samples_axis,
-                                            samples_targetframe,
-                                            meta_locations,
-                                            vis_image,
-                                            &start_position,
-                                            &cost,
-                                            camera_,
-                                            img_color,
-                                            T,
-                                            &mean_sym
-                                            );
+                                            // DebugScreen(
+                                            // start_target_frame,
+                                            // num_samples_symmetry,
+                                            // num_meta_samples_axis,
+                                            // samples_targetframe,
+                                            // meta_locations,
+                                            // vis_image,
+                                            // &start_position,
+                                            // &cost,
+                                            // camera_,
+                                            // img_color,
+                                            // T,
+                                            // &mean_sym
+                                            // );
                                             // cv::waitKey(20000);
 
                                             
@@ -554,18 +554,18 @@ namespace aslam
                         // SM_INFO_STREAM("NORM: "<<norms<<"\n");
                     }
                     
-                    // for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
-                    // {
-                    //     // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 4,cv::Scalar(0,0,255),2); 
-                    //     cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 0,cv::Scalar(0,0,255),1);   
-                    // }
+                    for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
+                    {
+                        // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 4,cv::Scalar(0,0,255),2); 
+                        cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 0,cv::Scalar(0,0,255),1);   
+                    }
                     reprojection.obslist_[j] = new_obslist_[j];
                     
                     std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
                     
                     aslam::Time stamp = obslist_[j].time();
-                    // SM_INFO_STREAM("Writing an autofill");
-                    // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
+                    SM_INFO_STREAM("Writing an autofill");
+                    cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
 
                 }
 
