@@ -271,12 +271,12 @@ namespace aslam
             int minInitCornersAutoComplete = 24; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
             float minTagSizeAutoComplete = 0; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
             float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
-            float minResizewindowSize = 1;
+            float minResizewindowSize = 2;
             float maxResizewindowSize = 10;
 
             bool harris_check = true;
             bool start_from_subpix = false;
-            double refine_magnitude_reject = 8.0;
+            double refine_magnitude_reject = 4.0;
             bool symmetry_refinement = false;
     };
     }

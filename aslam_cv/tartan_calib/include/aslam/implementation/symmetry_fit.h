@@ -69,15 +69,15 @@ bool DebugScreen(
     double* mean_sym
     )
     {
-      // cv::Mat intensity_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
-      // for (int i = 0; i< num_meta_samples_axis; i++)
-      // {
-      //   for (int j = 0; j< num_meta_samples_axis; j++)
-      //   {
-      //     intensity_img.at<float>(i,j) = static_cast<float>(TargetToIntensity(image, T_target_to_euc, camera, start_target_frame +  meta_locations[i][j]));
-      //   }
-      // }
-      // cv::imwrite("intensity_test.png",intensity_img);
+      cv::Mat intensity_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
+      for (int i = 0; i< num_meta_samples_axis; i++)
+      {
+        for (int j = 0; j< num_meta_samples_axis; j++)
+        {
+          intensity_img.at<float>(i,j) = static_cast<float>(TargetToIntensity(image, T_target_to_euc, camera, start_target_frame +  meta_locations[i][j],1.0));
+        }
+      }
+      cv::imwrite("intensity_test.png",intensity_img);
 
       cv::Mat symmetry_img(cv::Size(num_meta_samples_axis,num_meta_samples_axis),CV_32FC1);
 

@@ -33,6 +33,11 @@ np.set_printoptions(suppress=True)
 # resolutions = np.array([[1000,1000,1000,1000,1000,1000,1000],[1000,1000,1000,1000,1000,1000,1000]])
 # projections = ["pinhole","pinhole","pinhole","pinhole","pinhole","homography","cornerpredictor"]
 
+# fovs = np.array([[90,90,90,90,90],[90,90,90,90,90]])
+# poses = np.array([[90,90,90,90,0],[0,180,270,90,0]])
+# resolutions = np.array([[1000,1000,1000,1000,1000],[1000,1000,1000,1000,1000]])
+# projections = ["pinhole","pinhole","pinhole","pinhole","pinhole"]
+
 fovs = np.array([[90],[90]])
 poses = np.array([[90],[0]])
 resolutions = np.array([[1000],[1000]])
