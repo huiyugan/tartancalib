@@ -8,19 +8,31 @@ class Experiment:
         self.topics = topics
         self.target = target
 
-data_folder = '/data/'
-experiments_output = '/data/experiments/'
+data_folder = '/data/final_experiments/'
+experiments_output = '/data/final_experiments/'
 experiments = []
 
-experiments.append(Experiment('short.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
-experiments.append(Experiment('gopro-6x6.bag',['/gopro/image_raw'],'/data/april_6x6.yaml'))
-experiments.append(Experiment('gopro-10x7.bag',['/camera_0/image_raw'],'/data/400_300.yaml'))
+#ordv single cam
+experiments.append(Experiment('ord-6x6-sep12-500f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+# # experiments.append(Experiment('ord-6x6-sep12-100f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+experiments.append(Experiment('ord-10x7-sep12-500f.bag',['/camera_0/image_raw'],'/data/400_300.yaml'))
 
-experiments.append(Experiment('bgr8-aug11.bag',['/camera_0/image_raw','/camera_1/image_raw','/camera_2/image_raw'],'/data/april_6x6.yaml'))
-experiments.append(Experiment('bgr8-aug11.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
 
-experiments.append(Experiment('bgr8-aug15-trial2.bag',['/camera_0/image_raw','/camera_1/image_raw','/camera_2/image_raw'],'/data/april_6x6.yaml'))
-experiments.append(Experiment('bgr8-aug15-trial2.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+# #ordv multi cam
+experiments.append(Experiment('ord-10x7-sep12-500f.bag',['/camera_0/image_raw','/camera_1/image_raw'],'/data/400_300.yaml'))
+experiments.append(Experiment('ord-6x6-sep12-500f.bag',['/camera_0/image_raw','/camera_1/image_raw'],'/data/april_6x6.yaml'))
+
+# # # gopro bags
+experiments.append(Experiment('gopro-6x6-sep12-500f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+experiments.append(Experiment('gopro-10x7-sep12-500f.bag',['/camera_0/image_raw'],'/data/400_300.yaml'))
+
+# experiments.append(Experiment('short.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+
+
+
+
+
+
 
 models = ['ds-none','omni-radtan']
 
@@ -28,7 +40,7 @@ experiment_count = 0
 for experiment in experiments:
     for model in models:
 
-        os.system('rm *.png')
+        # os.system('rm *.png')
         experiment_folder = experiments_output+'experiment_'+str(experiment_count)
         if (os.path.exists(experiment_folder)):
             filelist = glob.glob(os.path.join(experiment_folder, "*"))

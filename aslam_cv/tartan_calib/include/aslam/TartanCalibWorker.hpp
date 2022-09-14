@@ -278,6 +278,7 @@ namespace aslam
             bool start_from_subpix = false;
             double refine_magnitude_reject = 10.0;
             bool symmetry_refinement = false;
+            double symmetry_edge_threshold = 10.0;
     };
     }
 }

@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+# print("importing libraries")
+from tartan_logging import TartanLogging
+import numpy as np
+import argparse
+import dill
+import matplotlib
+# matplotlib.use('pdf')
+import matplotlib.pyplot as plt
+import cv2
+import pylab as pl
+import math
+from sm import PlotCollection
+from matplotlib.backends.backend_pdf import PdfPages
+import cv2 
+
+
+def parseArgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-obsfile','--obsfile',required=True,help="The log pickle you want to use.")
+    parser.add_argument('-n_cams','--n_cams',required=False,default=1,help="Number of cams being loaded.")
+
+    return parser.parse_args()
+
+
+def getPolars(img_points,cams):
+    polars = [] 
+    for i, cam in enumerate(cams):
+
+        num_points = np.shape(img_points[i])[0]
+        for j in range(num_points):
+            ec_pnt = cam.keypointToEuclidean(img_points[i][j]) 
+            polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
+    return polars
+
+
+def get_imgpoints(cams,obsdb):
+    err = np.array([])
+    polars = [] 
+    total_num_points = 0
+
+    img_points_x_global = np.array([])
+    img_points_y_global = np.array([])
+
+    all_img_points = []
+    for i, cam in enumerate(cams):
+        img_points_x = np.concatenate([obs.getCornersImageFrame()[:,0] for obs in obsdb[i] ])
+        img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obsdb[i] ])
+
+        num_points = np.size(img_points_x)
+        img_points_merged = np.zeros((num_points,2))
+        img_points_merged[:,0] = img_points_x
+        img_points_merged[:,1] = img_points_y
+
+        all_img_points.append(img_points_merged)
+
+
+
+    return all_img_points
+             
+
+def load_log(parsed):
+    with open(parsed.obsfile, 'r') as f:
+        tartanObsLog = dill.load(f)
+    
+    tartanObsdb = [log.ObservationDatabase_ for log in tartanObsLog]
+    
+    kalibrobsdb = tartanObsdb[0]
+    tartanobsdb = tartanObsdb[-1]
+
+    kalibrobs = [kalibrobsdb.observations[i] for i in range(parsed.n_cams)]
+    kalibrcams = [tartanObsLog[0].camera_[i] for i in range(parsed.n_cams)]
+
+    tartanobs = [tartanobsdb.observations[i] for i in range(parsed.n_cams)]
+    tartancams = [tartanObsLog[1].camera_[i] for i in range(parsed.n_cams)]
+
+    return [kalibrobs,tartanobs,kalibrcams,tartancams]
+
+def main():
+    parsed = parseArgs()
+    kalibrobs,tartanobs,kalibrcams,tartancams = load_log(parsed)
+    
+    img_points_kalibr = get_imgpoints(tartancams,kalibrobs)
+    polars_kalibr = getPolars(img_points_kalibr,tartancams)
+
+    img_points_tartan = get_imgpoints(tartancams,tartanobs)
+    polars_tartan = getPolars(img_points_tartan,tartancams)
+
+    bins = np.linspace(0,100,10)
+    labels = ['Kalibr','Tartan','Deltille']
+
+    hist_data = [polars_kalibr,polars_tartan]
+
+    external_files = [['/data/distribution_plots/deltille-ord-6x6-sep12-500f-camera_0.npy']]
+
+    for external_file in external_files:
+        external_imgpoints = []
+        for external_cam in external_file:
+            external_np = np.load(external_cam)
+            external_imgpoints.append(external_np)
+        
+        hist_data.append(getPolars(external_imgpoints,tartancams))
+
+
+    plt.hist(hist_data,bins,label=labels)
+    plt.legend(loc='upper right')
+    plt.xlabel('Polar Angle [deg]')
+    plt.ylabel('Number of Features Detected')
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()

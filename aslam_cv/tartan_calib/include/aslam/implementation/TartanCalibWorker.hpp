@@ -308,6 +308,12 @@ namespace aslam
                                     
                                     if (symmetry_refinement)
                                     {
+                                        if (tagCorners.at<float>(0,0) > symmetry_edge_threshold && tagCorners.at<float>(0,0) < (img_gray.cols-symmetry_edge_threshold) &&
+                                        tagCorners.at<float>(0,1) > symmetry_edge_threshold && tagCorners.at<float>(0,1) < (img_gray.rows - symmetry_edge_threshold)
+                                        )
+                                        {
+
+
                                         float desired_window_pixel = 15.0;
                                         // set up target-based samples
                                         float window_half_size_scalar_meta = 1.0;
@@ -507,7 +513,7 @@ namespace aslam
                                             new_obslist_[j].updateImagePoint(index_reprojection,end_position_eigen);
 
                                         }
-
+                                    }
                                 }
                                 else
                                 {
@@ -557,15 +563,15 @@ namespace aslam
                     for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
                     {
                         // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 4,cv::Scalar(0,0,255),2); 
-                        cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 0,cv::Scalar(0,0,255),1);   
+                        cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 2,cv::Scalar(0,0,255),-1);   
                     }
                     reprojection.obslist_[j] = new_obslist_[j];
                     
                     std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
                     
                     aslam::Time stamp = obslist_[j].time();
-                    SM_INFO_STREAM("Writing an autofill");
-                    cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
+                    // SM_INFO_STREAM("Writing an autofill");
+                    // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
 
                 }
 

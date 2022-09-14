@@ -53,6 +53,36 @@ Vec2f TargetToImageFrame(
   return Vec2f(distorted_pixel_location(0),distorted_pixel_location(1));
 }
 
+template <typename C>
+bool IsValid(
+    Eigen::Vector4d target_location,
+    Eigen::Matrix4d T_target_to_euc,
+    C* camera,
+    cv::Mat cv_img,
+    double threshold
+    )
+{
+  Eigen::VectorXd distorted_pixel_location;
+  Eigen::VectorXd sample_3D = T_target_to_euc*target_location; 
+
+  Eigen::Vector3d sample_input;
+  sample_input(0) = sample_3D(0);
+  sample_input(1) = sample_3D(1);
+  sample_input(2) = sample_3D(2);
+
+  camera->vsEuclideanToKeypoint(sample_input,distorted_pixel_location);
+  // return Vec2f(distorted_pixel_location(0),distorted_pixel_location(1));
+  bool valid = false;
+  if (distorted_pixel_location(0) > threshold && distorted_pixel_location(0)< (cv_img.cols-threshold))
+  {
+    if (distorted_pixel_location(1) > threshold && distorted_pixel_location(1)< (cv_img.rows-threshold))
+    {
+      valid = true; 
+    }
+  }
+  return valid;
+}
+
 template <typename T, typename C, size_t rows, size_t cols>
 bool DebugScreen(
     Eigen::Vector4d start_target_frame,
@@ -154,71 +184,78 @@ bool FitSymmetry(
 
       constexpr int kMaxIterationCount = 30;
       double norm_threshold = 0.005;
-      for (int iteration = 0; iteration < kMaxIterationCount; ++ iteration) {
-        // lambda = -1;
 
-       
-      //   // *out_position = TargetToImageFrame(start_target_frame, T_target_to_euc, camera);
+      // if (IsValid(start_target_frame,T_target_to_euc,camera,cv_image,10.0))
+      if(true)
+      {
 
-      //   // if (kDebug) {
-      //   //   SM_INFO_STREAM("cost: " << cost);
-      //   // }
-      //   // if (final_cost) {
-      //   //   *final_cost = cost;
-      //   // }
-    
-      // // Initialize lambda?
-      // SM_INFO_STREAM("Meta iteration: "<<iteration);
-      if (lambda < 0) {
-        // lambda = 0.001f * (1.f / kDim) * H.diagonal().sum();
-        lambda = 1000;
-      }
+        for (int iteration = 0; iteration < kMaxIterationCount; ++ iteration) {
+          // lambda = -1;
 
-    
-      bool applied_update = false;
-      for (int lm_iteration = 0; lm_iteration < 10; ++ lm_iteration) {
-        // SM_INFO_STREAM("Minor iteration: "<<lm_iteration);
+        
+        //   // *out_position = TargetToImageFrame(start_target_frame, T_target_to_euc, camera);
 
-        // this fill in H and b with the jacobian parts
-        double cost = TargetToJacobian(image, T_target_to_euc, camera, intermediate_target_frame,samples_targetframe,num_samples_symmetry,cv_image,&Jacobian,&H, &b,scaling_factor);
-
-        Matrix<double, kDim, kDim> H_LM;
-        H_LM.triangularView<Eigen::Upper>() = H.triangularView<Eigen::Upper>();
-        H_LM.diagonal().array() += lambda;
+        //   // if (kDebug) {
+        //   //   SM_INFO_STREAM("cost: " << cost);
+        //   // }
+        //   // if (final_cost) {
+        //   //   *final_cost = cost;
+        //   // }
       
-
-        Eigen::Matrix<double, kDim, 1> x = H_LM.cast<double>().selfadjointView<Eigen::Upper>().ldlt().solve(b.cast<double>());
-
-        if (x.norm()>norm_threshold && x.norm() >0.000000001)
-        {
-          x *= (norm_threshold/x.norm());
+        // // Initialize lambda?
+        // SM_INFO_STREAM("Meta iteration: "<<iteration);
+        if (lambda < 0) {
+          // lambda = 0.001f * (1.f / kDim) * H.diagonal().sum();
+          lambda = 1000;
         }
+
+      
+        bool applied_update = false;
+        for (int lm_iteration = 0; lm_iteration < 10; ++ lm_iteration) {
+          // SM_INFO_STREAM("Minor iteration: "<<lm_iteration);
+
+          // this fill in H and b with the jacobian parts
+          double cost = TargetToJacobian(image, T_target_to_euc, camera, intermediate_target_frame,samples_targetframe,num_samples_symmetry,cv_image,&Jacobian,&H, &b,scaling_factor);
+
+          Matrix<double, kDim, kDim> H_LM;
+          H_LM.triangularView<Eigen::Upper>() = H.triangularView<Eigen::Upper>();
+          H_LM.diagonal().array() += lambda;
         
 
-        test_target_frame = intermediate_target_frame;
-        test_target_frame(0) -= x(0,0);
-        test_target_frame(1) -= x(1,0);
-      
-        double test_cost = TargetToSymmetry(image, T_target_to_euc, camera, test_target_frame,samples_targetframe,num_samples_symmetry,cv_image,scaling_factor);
-        // SM_INFO_STREAM("x: "<<x);
+          Eigen::Matrix<double, kDim, 1> x = H_LM.cast<double>().selfadjointView<Eigen::Upper>().ldlt().solve(b.cast<double>());
+
+          if (x.norm()>norm_threshold && x.norm() >0.000000001)
+          {
+            x *= (norm_threshold/x.norm());
+          }
+          
+
+          test_target_frame = intermediate_target_frame;
+          test_target_frame(0) -= x(0,0);
+          test_target_frame(1) -= x(1,0);
+
+          // if (IsValid(test_target_frame,T_target_to_euc,camera,cv_image,10.0))
+          if (true)
+          {
+            double test_cost = TargetToSymmetry(image, T_target_to_euc, camera, test_target_frame,samples_targetframe,num_samples_symmetry,cv_image,scaling_factor);
+
+            if (test_cost < cost) {
+              if (final_cost) {
+                *final_cost = test_cost;
+              }
+              intermediate_target_frame = test_target_frame;
+              lambda *= 0.5f;
+              applied_update = true;
+              break;
+            } else {
+              lambda *= 2.f;
+            }
+
+          }
         
-      
-      // if (kDebug) {
-      //   // LOG(INFO) << "  test_cost: " << test_cost << ", cost: " << cost;
-      // }
-      
-      if (test_cost < cost) {
-        if (final_cost) {
-          *final_cost = test_cost;
-        }
-        intermediate_target_frame = test_target_frame;
-        lambda *= 0.5f;
-        applied_update = true;
-        break;
-      } else {
-        lambda *= 2.f;
+
       }
-    }
+      }
     }
    *out_position = TargetToImageFrame(intermediate_target_frame,T_target_to_euc,camera);
    start_target_frame = intermediate_target_frame;
