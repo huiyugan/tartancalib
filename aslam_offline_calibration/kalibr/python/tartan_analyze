@@ -20,6 +20,7 @@ experiments_folder = '/data/final_experiments/'
 summary_file = 'summary.txt'
 nbins = 100
 csv_dir = '/data/final_experiments/experiments.csv'
+polar_cutoff = -1
 
 class Experiment:
     def __init__(self,log_file):
@@ -33,34 +34,51 @@ class Experiment:
         self.num_cams = int(Lines[2])
         self.model = Lines[3]
 
+def get_outliers(array, num_stds):
+    num_points = np.shape(array)[1]
+    std = np.std(array, 0, dtype=np.float)
+    delete_list = []
+    for i in range(num_points):
+        if (np.abs(array[0,i]) > num_stds*std[0] or np.abs(array[1,i]) > num_stds*std[1]):
+            delete_list.append(i)
+    
+    return delete_list
+
 def evaluate(cams, obsdb):
-    try:
+    try: 
         err = np.array([])
         polars = [] 
         total_num_points = 0
         for i, cam in enumerate(cams):
-
-            # delete_idxs = get_outliers(err,4)
-            # err = np.delete(err,delete_idxs,1)
             err_local = cam.getReprojectionErrors(obsdb[i])
             num_points = np.shape(err_local)[0]
             err_local = np.transpose(np.reshape(err_local,(num_points,2)))
+
+
+            num_points = np.shape(err_local)[0]
+
             err_local = np.array([np.linalg.norm(err_local[:,q]) for q in range(num_points)])
-            
+            num_points = np.shape(err_local)[0]
             err = np.append(err,err_local)
             # mag_err = np.array([np.linalg.norm(err[:,q]) for q in range(num_points)])
 
             # polar normalized errors
             img_points_x = np.concatenate([obs.getCornersImageFrame()[:,0] for obs in obsdb[i] ])
             img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obsdb[i] ])
-
+            
             for j in range(num_points):
                 ec_pnt = cam.keypointToEuclidean(np.array([[img_points_x[j]],[img_points_y[j]]])) 
                 polars.append(np.rad2deg(np.arctan2(np.linalg.norm(ec_pnt[:2]),ec_pnt[-1])))
             
             total_num_points += num_points
+        
+        # polars = np.array(polars)
+        # polars = np.delete(polars,delete_idxs,1)
+        # if (polar_cutoff != -1):
+        #     delete_idxs = (polars >polar_cutoff).nonzero()
+        #     polars = np.delete(polars,delete_idxs)
+        #     err = np.delete(err,delete_idxs)
 
-        polars = np.array(polars)
         polar_idxs = np.argsort(polars)
 
         polar_min = np.min(polars)
@@ -81,8 +99,9 @@ def evaluate(cams, obsdb):
 
 
         return [np.mean(err),np.mean(bin_avg_errs),total_num_points]
-    
+        
     except:
+        print("Something went wrong")
         return [0,0,0]
 
         # num_points = np.shape(err)[0]

@@ -140,7 +140,7 @@ def parseArgs():
     outputSettings.add_argument('--polar_setting', type=int, default=0, dest='polarSetting', help='The way we are using polar angles of detections to improve results. 0=None, don not use. 1=set an angle threshold, under this threshold no corners will be used. 2 = bins, divide the corners into polar angle bins and give each bin a weight.')
     outputSettings.add_argument('--force_all', action='store_true', dest='forceAll', help='Force all points to be used.')
     outputSettings.add_argument('--log_dest', type=str, dest='logDest',default='log', help='Logging for later analysis.')
-    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=70, help='Logging for later analysis.')
+    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=50, help='Logging for later analysis.')
     outputSettings.add_argument('--outputMatlab',action='store_true',dest='outputMatlab',help='Outputs a matlab matrix for use in babelcalib.')
     outputSettings.add_argument('--save_dir', type=str, dest='saveDir',default='/data/', help='All the data will be logged to this directory.')
 
@@ -278,14 +278,14 @@ def main():
                 print("initializing calibrator")
                 polar_object = kcc.PolarWeighting()
 
-                if iteration > 0:
-                    if parsed.polarSetting == 1:
-                        polar_object.mode = kcc.PolarOptions.CUTOFF
-                        polar_object.binaryCutOff = parsed.polarCutoff
+                # if iteration > 0:
+                if parsed.polarSetting == 1:
+                    polar_object.mode = kcc.PolarOptions.CUTOFF
+                    polar_object.binaryCutOff = parsed.polarCutoff
 
-                    elif parsed.polarSetting == 2:
-                        polar_object.mode = kcc.PolarOptions.RAND_BIN_PICK
-                        polar_object.numBins = 50
+                elif parsed.polarSetting == 2:
+                    polar_object.mode = kcc.PolarOptions.RAND_BIN_PICK
+                    polar_object.numBins = 50
 
                 calibrator = kcc.CameraCalibration(cameraList, baseline_guesses, verbose=parsed.verbose, useBlakeZissermanMest=parsed.doBlakeZisserman,polarObject=polar_object)
   
@@ -469,7 +469,7 @@ def main():
 
                     for cam_id in range(0, numCams):
                         cam = cameraList[cam_id]                      
-                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,['none'])
+                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,['originalprojection'])
                         for obs in new_obs:
                             obsdb.addObservation(cam_id,obs)
                         obslistTartan[cam_id] = new_obs

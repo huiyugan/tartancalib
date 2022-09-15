@@ -202,7 +202,7 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
         cams_in_view = set()
         rval.rerrs=dict()
         rerr_cnt=0
-        for cam_id, obs in rig_observations:
+        for j, [cam_id, obs] in enumerate(rig_observations):
             camera = cameras[cam_id]
             cams_in_view.add(cam_id)
             
@@ -238,9 +238,10 @@ class CalibrationTargetOptimizationProblem(ic.CalibrationOptimizationProblem):
                         # stat = getPointStatistics(cself,view_id,cam_id,p_idx)
                         v = normalize(camera.geometry.keypointToEuclidean(y))
                         polarAngle = math.acos(v[2])
-                        if np.rad2deg(polarAngle) < polarObject.binaryCutOff:
-                            mest = aopt.NoMEstimator(0.0)
-                            rerr.setMEstimatorPolicy(mest)
+                        if np.rad2deg(polarAngle) > polarObject.binaryCutOff:
+                            rval.rig_observations[j][1].removeImagePoint(i)
+                            # mest = aopt.NoMEstimator(0.0)
+                            # rerr.setMEstimatorPolicy(mest)
                     
                     elif polarObject.mode == PolarOptions.RAND_BIN_PICK:
                         v = normalize(camera.geometry.keypointToEuclidean(y))

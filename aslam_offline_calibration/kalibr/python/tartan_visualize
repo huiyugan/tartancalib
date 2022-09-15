@@ -94,52 +94,6 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
         img_points_y = np.concatenate([obs.getCornersImageFrame()[:,1] for obs in obslist ])
 
         counter = 0
-        print("NUM FRAMES"+str(len(obslist)))
-        # for obs_num, obs in enumerate(obslist):
-        #     target_points = obs.getCornersTargetFrame()
-        #     num_points = np.shape(target_points)[0]
-        #     if (num_points > 0):
-        #         max_error = np.max(mag_err[counter:counter+num_points])
-        #         print("Interval from {0} to {1}, error is: {2}".format(counter,counter+num_points,max_error))
-        #         counter += num_points
-        #         if (max_error > 2 ):
-        #             # get transformation between board and camera frames
-        #             success, T_t_c = cam.estimateTransformation(obs)
-        #             obs.set_T_t_c(T_t_c)
-        #             T = np.linalg.inv(obs.T_t_c().T())
-
-        #             #get detected points in target frame
-                    
-        #             target_points_H = np.transpose(np.hstack([target_points,np.ones((num_points,1))]))
-        #             target_points_camframe = T.dot(target_points_H)
-
-        #             reproj_x = []
-        #             reproj_y = []
-        #             for k in range(num_points):
-        #                 ec_pnt = cam.euclideanToKeypoint(np.array([[target_points_camframe[0,k]],[target_points_camframe[1,k]],[target_points_camframe[2,k]]])) 
-        #                 reproj_x.append(ec_pnt[0])
-        #                 reproj_y.append(ec_pnt[1])
-
-        #             pl.imshow(obs.getImage(),cmap='gray')
-        #             img_points = obs.getCornersImageFrame()
-        #             pl.scatter(img_points[:,0],img_points[:,1],color='green',s=1)
-        #             pl.savefig(str(max_error)+'_'+str(obs.time().toSec())+'_detections_.png')
-        #             pl.clf()
-
-        #             pl.imshow(obs.getImage(),cmap='gray')
-        #             pl.scatter(reproj_x,reproj_y,color='red',s=1)
-        #             pl.savefig(str(max_error)+'_'+str(obs.time().toSec())+'_reprojections_.png')
-        #             pl.clf()
-                    
-        #             pl.imshow(obs.getImage(),cmap='gray')
-        #             pl.scatter(img_points[:,0],img_points[:,1],color='green',s=1)
-        #             pl.scatter(reproj_x,reproj_y,color='red',s=1)
-        #             pl.savefig(str(max_error)+'_'+str(obs.time().toSec())+'_all_.png')
-        #             pl.clf()
-
-
-        # img_points_x = np.delete(img_points_x,delete_idxs)
-        # img_points_y = np.delete(img_points_y,delete_idxs)
         print("NUM POINTS: "+str(num_points))
         polars = []
         for j in range(num_points):
@@ -168,8 +122,6 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
                 empty_idxs.append(k)
         
         bin_avg_errs = np.delete(bin_avg_errs,empty_idxs)
-        print("normal reproj. err:"+str(np.mean(err)))
-        print("spatially normalized: "+str(np.mean(bin_avg_errs)))
         # pl.hist(bin_avg_errs)
 
         matplotlib.rc('xtick', labelsize=20) 
@@ -178,53 +130,6 @@ def plotSphericalError(evalObs,evalCams,camNames,parsed):
         pl.plot([np.mean([bins[q],bins[q+1]]) for q in full_idxs],bin_avg_errs)
         pl.xlabel('Polar Angle', fontsize=20)
         pl.ylabel('Reprojection Error', fontsize=20)
-
-#     print(np.std(np.array(final_err), 1, dtype=np.float))
-    pl.legend(camNames,fontsize=20)
-    pl.savefig(camNames[0]+'.png')
-    # pl.show()
-
-
-
-# def get_polars(cams,obsdb):
-#     camera_init = cams[0][0]
-#     camera_final = cams[-1][0]
-
-#     obslist = obsdb[-1].observations[0]
-
-#     orig_err = camera_init.getReprojectionErrors(obslist)
-#     num_points = len(orig_err)
-#     orig_err = np.transpose(np.reshape(orig_err,(num_points,2)))
-
-#     camera_final = cams[-1][0]
-#     final_err = camera_final.getReprojectionErrors(obslist)
-#     final_err = np.transpose(np.reshape(final_err,(num_points,2)))
-
-#     delete_idxs = get_outliers(final_err,4)
-#     # delete_idxs = []
-#     print(np.shape(final_err))
-#     final_err = np.delete(final_err,delete_idxs,1)
-#     print(np.shape(final_err))
-
-#     # delete_idxs = get_outliers(orig_err,4)
-#     orig_err = np.delete(orig_err,delete_idxs,1)
-
-
-#     print("original")
-#     print(np.mean(orig_err, 1, dtype=np.float))
-#     print(np.std(orig_err, 1, dtype=np.float))
-
-
-#     print("tartan")
-#     print(np.mean(np.array(final_err), 1, dtype=np.float))
-#     print(np.std(np.array(final_err), 1, dtype=np.float))
-#     # print(np.std(np.sort(np.array(final_err))[:-10]))
-
-#     # pl.hist(orig_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-#     # pl.hist(orig_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-
-#     # pl.hist(final_err[0,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
-#     # pl.hist(final_err[1,:],alpha=0.5,bins=np.arange(-5.0,5.0,0.1))
 
 
 
@@ -261,155 +166,7 @@ def main():
 
 
     plotSphericalError(evalObs,evalCams,parsed.cam_names,parsed)
-
-    # cams = [log.camera_ for log in tartanlog]
-
-    # get_polars(cams,tartanobs)
-    # stats = [log.stats_ for log in tartanlog]
-
-    # plotter = PlotCollection.PlotCollection("Calibration report")
-
-    # if (parsed.mode=="compare"):
-    #     figs = list()    
-    #     assert parsed.idxs != None
-    #     idxs = [int(x) for x in parsed.idxs]
-
-    #     compare_obs = [tartanobs[i] for i in idxs]
-    #     f = pl.figure(1)
-    #     f.suptitle('Reprojections')
-        
-    #     obslist = compare_obs[0].observations[int(parsed.camid)]
-
-    #     # reprojections in image            
-    #     for obs in obslist:
-    #         pl.subplot(121)
-    #         pl.imshow(obs.getImage(),cmap='gray')
-    #         points = obs.getCornersImageFrame()  
-    #         pl.scatter(points[:,0],points[:,1],color='red',s=0.3)
-
-    #     obslist = compare_obs[1].observations[int(parsed.camid)]
-            
-    #     for obs in obslist:
-    #         pl.subplot(122)
-    #         pl.imshow(obs.getImage(),cmap='gray')
-    #         points = obs.getCornersImageFrame()  
-    #         pl.scatter(points[:,0],points[:,1],color='red',s=0.3)
-
-    #     plotter.add_figure('Reprojections', f)
-    #     figs.append(f)
-
-    #     #POLAR plot
-    #     f = pl.figure(2)
-    #     f.suptitle('Polar errors')
-
-    #     stat = stats[0]
-    #     print(len(stat))
-    #     angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
-    #     # sort by polar angle
-    #     sae_1 = angleError[ angleError[:,0].argsort() ]
-
-    #     stat = stats[-1]
-    #     print(len(stat))
-    #     angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stat ])
-    #     # sort by polar angle
-    #     sae_2 = angleError[ angleError[:,0].argsort() ]
-
-    #     z = np.polyfit(sae_1[:,0], sae_1[:,1], 2)
-    #     p_1 = np.poly1d(z)(sae_1[:,0])
-
-    #     z = np.polyfit(sae_2[:,0], sae_2[:,1], 2)
-    #     p_2 = np.poly1d(z)(sae_2[:,0])
-
-    #     pl.subplot(221)
-    #     pl.scatter(sae_1[:,0],sae_1[:,1],s=0.1,alpha=0.5)
-    #     pl.scatter(sae_2[:,0],sae_2[:,1],s=0.1,alpha=0.5)
-    #     pl.ylim(0,5.0)
-    #     plt.legend(['idx 1','idx2'])
-    #     pl.grid('on')
-    #     pl.xlabel('polar angle (deg)')
-    #     pl.ylabel('reprojection error (pixels)')
-    #     pl.subplot(222)
-    #     pl.hist(sae_1[:,0],alpha=0.5,bins=list(range(210)[::20]))
-    #     pl.hist(sae_2[:,0],alpha=0.5,bins=list(range(210)[::20]))
-    #     plt.legend(['idx 1','idx2'])
-    #     pl.grid('on')
-    #     pl.xlabel('polar angle (deg)')
-    #     pl.ylabel('count')
-
-    #     pl.subplot(223)
-    #     plt.plot(sae_1[:,0],p_1)
-    #     plt.plot(sae_2[:,0],p_2)
-    #     plt.legend(['idx 1','idx2'])
-
-    #     pl.grid('on')
-    #     pl.xlabel('polar angle (deg)')
-    #     pl.ylabel('reprojection error (pixels)')
-    #     pl.subplot(224)
-    #     pl.hist(sae_1[:,0],alpha=0.5)
-    #     pl.hist(sae_2[:,0],alpha=0.5)
-    #     plt.legend(['idx 1','idx2'])
-    #     pl.grid('on')
-    #     pl.xlabel('polar angle (deg)')
-    #     pl.ylabel('count')
-       
-
-    #     plotter.add_figure('Polar Angles', f)
-    #     figs.append(f)
-
-    #     # AZIMUTH
-    #     #angle plot
-    #     f = pl.figure(3)
-    #     f.suptitle('Azimuth errors')
-
-    #     stat = stats[0]
-    #     angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
-    #     # sort by azimuthal angle
-    #     sae_1 = angleError[ angleError[:,0].argsort() ]
-
-    #     stat = stats[-1]
-    #     angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stat ])
-    #     # sort by azimuthal angle
-    #     sae_2 = angleError[ angleError[:,0].argsort() ]
-
-    #     pl.subplot(221)
-    #     pl.plot(sae_1[:,0],sae_1[:,1],'bx-')
-    #     pl.grid('on')
-    #     pl.xlabel('azimuth angle (deg)')
-    #     pl.ylabel('reprojection error (pixels)')
-    #     pl.subplot(222)
-    #     pl.hist(sae_1[:,0],alpha=0.5)
-    #     pl.hist(sae_2[:,0],alpha=0.5)
-    #     pl.grid('on')
-    #     pl.xlabel('azimuth angle (deg)')
-    #     pl.ylabel('count')
-
-
-    #     pl.subplot(223)
-    #     pl.plot(sae_2[:,0],sae_2[:,1],'bx-')
-    #     pl.grid('on')
-    #     pl.xlabel('azimuth angle (deg)')
-    #     pl.ylabel('reprojection error (pixels)')
-    #     pl.subplot(224)
-    #     pl.hist(sae_1[:,0],alpha=0.5)
-    #     pl.hist(sae_2[:,0],alpha=0.5)
-    #     pl.grid('on')
-    #     pl.xlabel('azimuth angle (deg)')
-    #     pl.ylabel('count')
-       
-
-    #     plotter.add_figure('Azimuth Angles', f)
-    #     figs.append(f)
-
-    #     pdf=PdfPages('report.pdf')
-    #     for fig in figs:
-    #         pdf.savefig(fig)
-    #     pdf.close()
-
-    #     # pl.show()
-    #     # plotter.show()
-
-
-    
+    plt.savefig('all_reproj_err.png')
 
 
 if __name__ == "__main__":

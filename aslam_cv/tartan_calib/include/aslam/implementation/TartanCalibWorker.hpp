@@ -189,8 +189,8 @@ namespace aslam
                 {
                     new_obslist_[j].getCornersImageFrame(outCornerList_imageframe);
                 }
-
-
+                aslam::Time stamp = new_obslist_[j].time();
+                // write_observation(new_obslist_[j],std::to_string(stamp.toSec())+"_kalibr.txt");
 
                 // we are wiping this entry in new_obslist_ because:
                 // 1) if there aren't enough tags, we will reject the entire observation
@@ -228,49 +228,59 @@ namespace aslam
                         target_input(2) = static_cast<double>(all_target_transformed.coeff(2,i));
 
                         camera_->vsEuclideanToKeypoint(target_input,distorted_pixel_location_);
-                        // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,0,0),2);    
+                        // cv::circle(img_color, cv::Point2f(distorted_pixel_location_(0),distorted_pixel_location_(1)),5, cv::Scalar(0,255,0),2);    
                         target_image_frame.col(i) = distorted_pixel_location_;
                     }
 
                     target_image_frame_trimmed = target_image_frame;
                     target_image_frame_trimmed.conservativeResize(2,num_target_corners_trimmed);
 
-                    Eigen::Index index_reprojection, index_target;
+                    Eigen::Index index_target;
                     Eigen::VectorXd norms_reprojection, norms_target;
+
+
+                    for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
+                    {
+                        cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 5,cv::Scalar(0,0,255),2); 
+                        // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 2,cv::Scalar(0,0,255),-1);   
+                    } 
 
                     // for each quad, we check if all 4 corners are close to a reprojection
                     // if positive, we add the quad to the detections
-                    for (int k = 0; k < num_quads; k++)
-                    {
-                        std::vector<Eigen::Index> quad_idxs;
-                        float norm_quad = 0.0;
-                        for (int q = 0; q < 4; q++)
-                        {
-                            norms_reprojection = (target_image_frame_trimmed.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
-                            norms_reprojection.minCoeff(&index_reprojection);
-                            if (!std::count(quad_idxs.begin(), quad_idxs.end(), index_reprojection))
-                            {
-                                quad_idxs.push_back(index_reprojection);
-                                if (norms_reprojection(index_reprojection) > norm_quad )
-                                {
-                                    norm_quad = norms_reprojection(index_reprojection);
-                                }
-                            }
-                        }
+                    // for (int k = 0; k < num_quads; k++)
+                    // {
+                        // std::vector<Eigen::Index> quad_idxs;
+                        // float norm_quad = 0.0;
+                        // for (int q = 0; q < 4; q++)
+                        // {
+                        //     norms_reprojection = (target_image_frame_trimmed.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
+                        //     norms_reprojection.minCoeff(&index_reprojection);
+                        //     if (!std::count(quad_idxs.begin(), quad_idxs.end(), index_reprojection))
+                        //     {
+                        //         quad_idxs.push_back(index_reprojection);
+                        //         if (norms_reprojection(index_reprojection) > norm_quad )
+                        //         {
+                        //             norm_quad = norms_reprojection(index_reprojection);
+                        //         }
+                        //     }
+                        // }
                         
                         /// TODO: Make threshold tunable
                         /// we check if the corner was already detected and if not if it's close enough to where we expect it to be
                         // if (norms_reprojection(index_reprojection) < 10.0 & !std::count(outCornerIdx_.begin(), outCornerIdx_.end(), k) )
                         // at this point we override Kalibr corners for the adaptive subpixel refinement
-                        if (norm_quad < correction_threshold && quad_idxs.size() == 4 )
-                        {
+                        // if (norm_quad < correction_threshold && quad_idxs.size() == 4 )
+                        // {
 
-                            for (int q = 0; q <4; q++)
-                            {
+                            // for (int q = 0; q <4; q++)
+                            // {
                                 // ///TODO: Save above instead of recomputing
                                 // norms_reprojection = (target_image_frame.colwise() - quads.col(k*4+q)).colwise().squaredNorm();
                                 // norms_reprojection.minCoeff(&index_reprojection);
-                                index_reprojection = quad_idxs[q];
+                            
+                            for (auto index_reprojection:outCornerIdx_ )
+                            {
+                                // index_reprojection = quad_idxs[q];
 
                                 norms_target = (target_image_frame.colwise() - target_image_frame.col(index_reprojection)).colwise().squaredNorm();
                                 std::vector<size_t> idx(norms_target.size());
@@ -332,30 +342,30 @@ namespace aslam
                                         // start target frame position is just on the target
                                         Eigen::Vector4d start_target_frame = all_target_original.col(index_reprojection);
 
-                                        if(start_from_subpix)
-                                        {
-                                            // SM_INFO_STREAM("Start target frame: "<<start_target_frame);
-                                            // SM_INFO_STREAM("Transfomration: "<<T);
-                                            // //test with start target frame
-                                            // Eigen::VectorXd euclidean = T*start_target_frame;
-                                            Eigen::Vector3d euclidean_3d;
-                                            Eigen::Vector4d euclidean_4d;
-                                            cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
+                                        // if(start_from_subpix)
+                                        // {
+                                        //     // SM_INFO_STREAM("Start target frame: "<<start_target_frame);
+                                        //     // SM_INFO_STREAM("Transfomration: "<<T);
+                                        //     // //test with start target frame
+                                        //     // Eigen::VectorXd euclidean = T*start_target_frame;
+                                        //     Eigen::Vector3d euclidean_3d;
+                                        //     Eigen::Vector4d euclidean_4d;
+                                        //     cv::cornerSubPix(reprojection.obslist_[j].image(), tagCorners, cv::Size(refine_window_size, refine_window_size), cv::Size(-1, -1),cv::TermCriteria(cv::TermCriteria::COUNT|cv::TermCriteria::EPS,40,0.03));                                    
 
-                                            // Eigen::VectorXd subpixrefined = Eigen::Vector2d(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
+                                        //     // Eigen::VectorXd subpixrefined = Eigen::Vector2d(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
                                             
 
-                                            // camera_->vsEuclideanToKeypoint(euclidean,distorted_pixel_location_);
+                                        //     // camera_->vsEuclideanToKeypoint(euclidean,distorted_pixel_location_);
 
-                                            //project back to board
-                                            camera_->vsKeypointToEuclidean(quads.col(k*4+q),euclidean_3d);
-                                            euclidean_4d(0) = euclidean_3d(0);
-                                            euclidean_4d(1) = euclidean_3d(1);
-                                            euclidean_4d(2) = euclidean_3d(2);
-                                            euclidean_4d(3) = 1.0;
+                                        //     //project back to board
+                                        //     camera_->vsKeypointToEuclidean(quads.col(k*4+q),euclidean_3d);
+                                        //     euclidean_4d(0) = euclidean_3d(0);
+                                        //     euclidean_4d(1) = euclidean_3d(1);
+                                        //     euclidean_4d(2) = euclidean_3d(2);
+                                        //     euclidean_4d(3) = 1.0;
 
-                                            start_target_frame = out_T_t_c.T()*euclidean_4d;
-                                        }
+                                        //     start_target_frame = out_T_t_c.T()*euclidean_4d;
+                                        // }
 
                                         for (int sample_it = 0; sample_it < num_samples_symmetry; sample_it++) 
                                         {
@@ -424,7 +434,7 @@ namespace aslam
 
                                         // SM_INFO_STREAM("Start: "<<start_position);
                                         double mean_sym = 0;
-                                        cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),5, cv::Scalar(0,0,255),1); 
+                                        // cv::circle(img_color, cv::Point2f(start_position.x(),start_position.y()),5, cv::Scalar(0,0,255),1); 
 
                                         // std::vector<double> levels = {1.0,1.0,1.0};
                                         // std::vector<int> blur = {41,21,-1};
@@ -508,7 +518,7 @@ namespace aslam
 
                                         if (norm < refine_magnitude_reject)
                                         {
-                                            cv::circle(img_color, end_position,0, cv::Scalar(0,255,0),1); 
+                                            // cv::circle(img_color, end_position,0, cv::Scalar(0,255,0),1); 
                                             Eigen::Vector2d end_position_eigen = Eigen::Vector2d(end_position.x,end_position.y);
                                             new_obslist_[j].updateImagePoint(index_reprojection,end_position_eigen);
 
@@ -535,43 +545,39 @@ namespace aslam
 
                                         
                                     
-                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),0, cv::Scalar(0,255,0),1); 
-                                    if (found_before)
-                                    {
-                                        cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),5, cv::Scalar(0,164,255),2); 
-                                        cv::circle(img_color, cv::Point2f(outCornerList_imageframe[found_idx].x,outCornerList_imageframe[found_idx].y), 0,cv::Scalar(0,0,255),1); 
-                                    }
-                                    else
-                                    {
-                                        cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),5, cv::Scalar(0,255,0),2); 
-                                    }
+                                    cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),5, cv::Scalar(0,255,0),2); 
+                                    // if (found_before)
+                                    // {
+                                    //     cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),5, cv::Scalar(0,164,255),2); 
+                                    //     cv::circle(img_color, cv::Point2f(outCornerList_imageframe[found_idx].x,outCornerList_imageframe[found_idx].y), 0,cv::Scalar(0,0,255),1); 
+                                    // }
+                                    // else
+                                    // {
+                                    //     cv::circle(img_color, cv::Point2f(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1)),5, cv::Scalar(0,255,0),2); 
+                                    // }
                                     
                                     Eigen::Vector2d end_position_eigen = Eigen::Vector2d(tagCorners.at<float>(0,0),tagCorners.at<float>(0,1));
                                     new_obslist_[j].updateImagePoint(index_reprojection,end_position_eigen);
                                 }
 
                                 }
-
                             }
+                            // }
 
-                        }
+                        // }
 
 
                         // SM_INFO_STREAM("NORM: "<<norms<<"\n");
-                    }
+                    // }
                     
-                    for (int corner_idx =0; corner_idx < outCornerList_imageframe.size(); corner_idx++)
-                    {
-                        // cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 4,cv::Scalar(0,0,255),2); 
-                        cv::circle(img_color, cv::Point2f(outCornerList_imageframe[corner_idx].x,outCornerList_imageframe[corner_idx].y), 2,cv::Scalar(0,0,255),-1);   
-                    }
                     reprojection.obslist_[j] = new_obslist_[j];
                     
                     std::vector<aslam::cameras::GridCalibrationTargetObservation> obslist({reprojection.obslist_[j]});
                     
                     aslam::Time stamp = obslist_[j].time();
-                    // SM_INFO_STREAM("Writing an autofill");
-                    // cv::imwrite("autofill_"+std::to_string(stamp.toSec())+".png",img_color);
+                    SM_INFO_STREAM("Writing an autofill");
+                    cv::imwrite(std::to_string(stamp.toSec())+".png",img_color);
+                    // write_observation(new_obslist_[j],std::to_string(stamp.toSec())+"_tartan.txt");
 
                 }
 
@@ -579,6 +585,25 @@ namespace aslam
 
             }
         }
+
+
+        template< typename C>
+        void TartanCalibWorker<C>::write_observation(aslam::cameras::GridCalibrationTargetObservation obs, std::string filename)
+        { 
+            SM_INFO_STREAM("Writing observation to "<<filename);
+            std::vector<cv::Point2f> outCornerList_imageframe;  
+            obs.getCornersImageFrame(outCornerList_imageframe);
+            
+            std::ofstream myfile;
+            myfile.open (filename,std::ios_base::app);
+            for (int i = 0 ; i<outCornerList_imageframe.size() ; i ++)
+            {
+                myfile << std::to_string(outCornerList_imageframe[i].x)<<","<<std::to_string(outCornerList_imageframe[i].y)<<"\n";
+            }
+
+            myfile.close();
+        }
+
 
         template< typename C>
         void TartanCalibWorker<C>::homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection)
@@ -841,8 +866,8 @@ namespace aslam
                             colors.push_back(cv::Scalar(0,255,0));
         
                             // add the original image
-                            obs.push_back(obslist_[i]);
-                            colors.push_back(cv::Scalar(0,0,255));
+                            // obs.push_back(obslist_[i]);
+                            // colors.push_back(cv::Scalar(0,0,255));
 
                         }
                         const std::time_t now = std::time(nullptr) ; // get the current time point

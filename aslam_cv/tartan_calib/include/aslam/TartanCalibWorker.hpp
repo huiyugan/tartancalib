@@ -152,7 +152,7 @@ namespace aslam
             void homography_reprojection(aslam::cameras::ReprojectionWrapper<C>& reprojection );
             void match_quads(aslam::cameras::ReprojectionWrapper<C>& reprojection);
             bool export_dataset(std::string path);
-           
+            void write_observation(aslam::cameras::GridCalibrationTargetObservation obs, std::string filename);
            
             std::string ReprojectionModeToString(ReprojectionMode e)
             {
