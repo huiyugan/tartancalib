@@ -1,52 +1,142 @@
-![Kalibr](https://raw.githubusercontent.com/wiki/ethz-asl/kalibr/images/kalibr_small.png)
+# TartanCalib
 
 [![ROS1 Ubuntu 20.04](https://github.com/ethz-asl/kalibr/actions/workflows/docker_2004_build.yaml/badge.svg)](https://github.com/ethz-asl/kalibr/actions/workflows/docker_2004_build.yaml)
-[![ROS1 Ubuntu 18.04](https://github.com/ethz-asl/kalibr/actions/workflows/docker_1804_build.yaml/badge.svg)](https://github.com/ethz-asl/kalibr/actions/workflows/docker_1804_build.yaml)
-[![ROS1 Ubuntu 16.04](https://github.com/ethz-asl/kalibr/actions/workflows/docker_1604_build.yaml/badge.svg)](https://github.com/ethz-asl/kalibr/actions/workflows/docker_1604_build.yaml)
 
 ## Introduction
-Kalibr is a toolbox that solves the following calibration problems:
+TartanCalib is iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags. The code for TartanCalib is built upon the [Kalibr](https://github.com/ethz-asl/kalibr) toolbox, and allows easy calibration of wide-angle cameras.
 
-1. **Multi-Camera Calibration**: Intrinsic and extrinsic calibration of a camera-systems with non-globally shared overlapping fields of view with support for a wide range of [camera models](https://github.com/ethz-asl/kalibr/wiki/supported-models).
-1. **Visual-Inertial Calibration (CAM-IMU)**: Spatial and temporal calibration of an IMU w.r.t a camera-system along with IMU intrinsic parameters
-1. **Multi-Inertial Calibration (IMU-IMU)**: Spatial and temporal calibration of an IMU w.r.t a base visual-inertial sensing pair along with IMU intrinsic parameters.
-1. **Rolling Shutter Camera Calibration**: Full intrinsic calibration (projection, distortion and shutter parameters) of rolling shutter cameras.
+TartanCalib supports calibration of multiple wide-angle cameras. While calibrating multiple cameras, ensure that the cameras all maintain some view of the calibration board.
 
-To install follow the [install wiki page](https://github.com/ethz-asl/kalibr/wiki/installation) instructions for which you can either use Docker or install from source in a ROS workspace.
-Please find more information on the [wiki pages](https://github.com/ethz-asl/kalibr/wiki) of this repository.
-For questions or comments, please open an issue on Github.
+For more information, visit our project page [here](https://creativecommons.org/licenses/by-nc/4.0/).
 
+## Installation
+### Local Installation
+TartanCalib and Kalibr are integrated within ROS. Ensure that you have ROS installed within your system.
+- Ubuntu 16.04 ROS 1 [Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu)
+- Ubuntu 18.04 ROS 1 [Melodic](http://wiki.ros.org/melodic/Installation/Ubuntu)
+- Ubuntu 20.04 ROS 1 [Noetic](http://wiki.ros.org/noetic/Installation/Ubuntu)
 
-## News / Events
+1. Clone and build repository
+        mkdir ~/tartan_ws && cd ~/tartan_ws
+        mkdir src && cd src
+        git clone https://github.com/castacks/tartancalib
+        cd ..
+        export ROS1_DISTRO=noetic # kinetic=16.04, melodic=18.04, noetic=20.04
+        source /opt/ros/$ROS1_DISTRO/setup.bash
+        catkin init
+        catkin config --extend /opt/ros/$ROS1_DISTRO
+        catkin config --merge-devel # Necessary for catkin_tools >= 0.4.
+        catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+        catkin build
 
-* **May 3, 2022** - Support for Ubuntu 20.04 along with Docker scripts have been merged into master via PR [#515](https://github.com/ethz-asl/kalibr/pull/515). A large portion was upgrading to Python 3. A special thanks to all the contributors that made this possible. Additionally, contributed fixes for the different validation and visualization scripts have been merged.
-* **Febuary 3, 2020** - Initial Ubuntu 18.04 support has been merged via PR [#241](https://github.com/ethz-asl/kalibr/pull/241). Additionally, support for inputting an initial guess for focal length can be provided from the cmd-line on failure to initialize them.
-* **August 15, 2018** - Double sphere camera models have been contributed to the repository via PR [#210](https://github.com/ethz-asl/kalibr/pull/210). If you are interested you can refer to the [paper](https://arxiv.org/abs/1807.08957) for a nice overview of the models in the repository.
-* **August 25, 2016** - Rolling shutter camera calibration support was added as a feature via PR [#65](https://github.com/ethz-asl/kalibr/pull/65). The [paper](https://www.cv-foundation.org/openaccess/content_cvpr_2013/papers/Oth_Rolling_Shutter_Camera_2013_CVPR_paper.pdf) provides details for those interested.
-* **May 18, 2016** - Support for multiple IMU-to-IMU spacial and IMU intrinsic calibration was released.
-* **June 18, 2014** - Initial public release of the repository.
+2. Source catkin workspace
+        cd ~/tartan_ws && source devel/setup.bash
 
+3. Follow [Usage](#usage) section of this ReadMe to run calibration commands.
+
+### Docker
+Kalibr's original Dockerfiles are included within this repository. To use the Dockerfiles, ensure that you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
+
+1. Clone and build docker image
+        git clone https://github.com/castacks/tartancalib
+        cd tartancalib
+        docker build -t tartancalib -f Dockerfile_ros1_20_04 .
+
+2. Mount data folder and share xhost within container for GUI. For more information, read the [ROS wiki](http://wiki.ros.org/docker/Tutorials/GUI) on Docker.
+        FOLDER=/path/to/your/data/on/host
+        xhost +local:root
+        docker run -it -e "DISPLAY" -e "QT_X11_NO_MITSHM=1" \
+            -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+            -v "$FOLDER:/data" tartancalib
+
+3. When in the Docker container, follow the [Usage](#usage) section of this readme to run calibration commands.
+
+## Usage
+1. Create rosbag dataset
+
+This can be done through a multitude of different ways. If you have a physical setup linked to ROS, directly recording the sensor stream to a [rosbag](http://wiki.ros.org/rosbag) would be  easiest. There are also methods of cutting common video formats into rosbags. The rosbag [api](http://wiki.ros.org/rosbag/Code%20API) is well documented and contains examples that would potentially be helpful if you are new to working with bag files. 
+
+2. Define calibration board through YAML files
+
+Kalibr supports three different calibration targets with different parameters associated to each target. Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/calibration-targets) has more information on calibration targets in YAML. 
+
+Example YAML for a 10x7 aprilgrid:
+
+        #example for aprilgrid
+        target_type: 'aprilgrid' #gridtype
+        tagCols: 10                 #number of apriltags
+        tagRows: 7                  #number of apriltags
+        tagSize: 0.025              #size of apriltag, edge to edge [m]
+        tagSpacing: 0.3             #ratio of space between tags to tagSize
+                                    #example: tagSize=2m, spacing=0.5m --> tagSpacing=0.25[-]
+
+3. Run calibration
+
+An example code snippet for running TartanCalib:
+
+        rosrun kalibr tartan_calibrate \
+        --bag /path/to/bagfile.bag \
+        --target /path/to/target.yaml \
+        --topics /camera_0/image_raw /camera_1/image_raw \
+        --min-init-corners-autocomplete 29 \
+        --min-tag-size-autocomplete 2 \
+        --correction-threshold 10.1 \
+        --models omni-radtan omni-radtan \
+        --dont-show-report
+        --save_dir /path/to/output/ \
+
+Below is a table of configurable parameters that you may use to customize TartanCalib to your needs:
+
+| Parameter                     | Description                                                                           |
+| ----------------------------- | -----------                                                                           |
+| bag                           | Path to calibration bagfile.                                                          |
+| target                        | Path to target yaml files.                                                            |
+| topics                        | Topics within bag file to calibrate. For multi-cam calibration, specify topics you'd like to calibrate. For example, if you have three cameras with topic names `/camera_n/image_raw`, use `--topics camera_0/image_raw camera_1/image_raw camera_2/image_raw`    |
+| models                        | Choose from four possible projections: pinhole, homography, cornerpredictor and none. Cornerpredictor is the 
+| fovs                          | If using pinhole projection mode, this parameter represents FOV of pinhole. This argument accepts multiple pinholes corresponding to each topic. For example, if your bag contains two topics, `/camera_0/image_raw`, and `/camera_1/image_raw`, to generate three pinholes of fovs 30, 60, 90 for `camera_0` and one pinhole of fov 90 for `camera_1`, use `--fovs 30 60 90 --fovs 90`. Note that the number of arguments for fovs must correspond with poses and resolutions.           |
+| poses                         | If using pinhole projection mode, this parameter represents pose of pinhole. As with fovs, this argument can be configured for multiple projections.          |
+| resolutions                   | If using pinhole projection mode, this parameter represents resolution of pinhole. As with fovs, this argument can be configured for multiple projections.   |
+| projections                   | Choose from four possible projections: `pinhole`, `homography`, `cornerpredictor` and `none`. `Cornerpredictor` is the autocomplete method described within the paper. |
+| debug-modes                   | Choose from 7 possible debug modes for additional debug images: `pointcloudprojection`, `pinholeprojection`, `originalprojection`, `targetpointcloud`, `individualprojections`, `reprojectionpoints` and `none`. |
+| min-init-corners-autocomplete | The algorithm requires this many corners minimally for autocomplete. Smaller values might allow the algoirthm to run better, but the pose of the board might be too uncertain for accurate results.            |
+| min-tag-size-autocomplete     | Minimum number of pixels a tag needs to be before being autocompleted. This ensures really small tags are excluded instead of being detected poorly and affecting calibration.                               |
+| correction-threshold          | Number of pixel offset between reprojection and detection allowed.                    |
+| min-resize-window-size        | Minimum window size allowed during dynamic sizing.                                    |
+| max-resize-window-size        | Maximum window size allowed during dynamic sizing.                                    |
+| symmetry-refinement           | Boolean option for if experimental feature symmetry refinement is allowed.            |
+| symmetry-edge-threshold       | Checks if detections are too close to border of pixels.                               |
+| log_dest                      | Save directory of logs.                                                               |
+| outputMatlab                  | Outputs file in Matlab format for use in BabelCalib or similar calibration toolboxes. |
+| save_dir                      | Save directory for logging data.                                                      |
+
+Output will be found in the directory you've specified in save_dir.
+
+4. Output
+TartanCalib runs in two iterations. The output file using enhancements from TartanCalib may be found in `log1-camchain.yaml`. The .yaml file will contain distortion coefficients for the distortion model used, as well as intrinsics for the camera being calibrated. For multi-camera calibration, the .yaml file will also include extrinsics between different cameras.
+
+For more information on the output, refer to Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/yaml-formats).
 
 ## Authors
-* Paul Furgale
-* Hannes Sommer
-* Jérôme Maye
-* Jörn Rehder
-* Thomas Schneider ([email](thomas.schneider@voliro.com))
-* Luc Oth
-
+* Bardienus P. Duisterhof ([email](bduister@andrew.cmu.edu))
+* Yaoyu Hu
+* Si Heng Teng ([email](sihengt@andrew.cmu.edu))
+* Michael Kaess
+* Sebastian Scherer
 
 ## References
-The calibration approaches used in Kalibr are based on the following papers. Please cite the appropriate papers when using this toolbox or parts of it in an academic publication.
+The calibration approaches used in TartanCalib are documented in the following paper. Please cite this paper, and the appropriate papers on Kalibr's repository when using this toolbox or parts of it in an academic publication.
 
-1. <a name="joern1"></a>Joern Rehder, Janosch Nikolic, Thomas Schneider, Timo Hinzmann, Roland Siegwart (2016). Extending kalibr: Calibrating the extrinsics of multiple IMUs and of individual axes. In Proceedings of the IEEE International Conference on Robotics and Automation (ICRA), pp. 4304-4311, Stockholm, Sweden.
-1. <a name="paul1"></a>Paul Furgale, Joern Rehder, Roland Siegwart (2013). Unified Temporal and Spatial Calibration for Multi-Sensor Systems. In Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), Tokyo, Japan.
-1. <a name="paul2"></a>Paul Furgale, T D Barfoot, G Sibley (2012). Continuous-Time Batch Estimation Using Temporal Basis Functions. In Proceedings of the IEEE International Conference on Robotics and Automation (ICRA), pp. 2088–2095, St. Paul, MN.
-1. <a name="jmaye"></a> J. Maye, P. Furgale, R. Siegwart (2013). Self-supervised Calibration for Robotic Systems, In Proc. of the IEEE Intelligent Vehicles Symposium (IVS)
-1. <a name="othlu"></a>L. Oth, P. Furgale, L. Kneip, R. Siegwart (2013). Rolling Shutter Camera Calibration, In Proc. of the IEEE Computer Vision and Pattern Recognition (CVPR)
+1. Bardienus P Duisterhof, Yaoyu Hu, Si Heng Teng, Michael Kaess, Sebastian Scherer (2022). TartanCalib: Iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags. Submitted to  Proceedings of the IEEE International Conference on Robotics and Automation (ICRA).
+
+@article{duisterhof2022tartancalib,
+  title={TartanCalib: Iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags},
+  author={Duisterhof, Bardienus P and Hu, Yaoyu and Teng, Si Heng and Kaess, Michael and Scherer, Sebastian},
+  journal={arXiv preprint arXiv:2210.02511},
+  year={2022}
+}
 
 ## Acknowledgments
-This work is supported in part by the European Union's Seventh Framework Programme (FP7/2007-2013) under grants #269916 (V-Charge), and #610603 (EUROPA2).
+This work is built upon the [Kalibr](https://github.com/ethz-asl/kalibr) toolbox.
 
 ## License (BSD)
 Copyright (c) 2014, Paul Furgale, Jérôme Maye and Jörn Rehder, Autonomous Systems Lab, ETH Zurich, Switzerland<br>
@@ -57,10 +147,10 @@ Redistribution and use in source and binary forms, with or without modification,
 
 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 
-1. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-1. All advertising materials mentioning features or use of this software must display the following acknowledgement: This product includes software developed by the Autonomous Systems Lab and Skybotix AG.
+3. All advertising materials mentioning features or use of this software must display the following acknowledgement: This product includes software developed by the Autonomous Systems Lab and Skybotix AG.
 
-1. Neither the name of the Autonomous Systems Lab and Skybotix AG nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+4. Neither the name of the Autonomous Systems Lab and Skybotix AG and Carnegie Mellon University nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE AUTONOMOUS SYSTEMS LAB AND SKYBOTIX AG ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL the AUTONOMOUS SYSTEMS LAB OR SKYBOTIX AG BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+THIS SOFTWARE IS PROVIDED BY THE AUTONOMOUS SYSTEMS LAB, SKYBOTIX AG AND CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTONOMOUS SYSTEMS LAB OR SKYBOTIX AG OR CARNEGIE MELLON UNIVERSITY BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

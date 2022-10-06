@@ -66,7 +66,12 @@ namespace aslam
     public boost::enable_shared_from_this<ReprojectionWrapper<C>>
     {
       public:
-        ReprojectionWrapper(std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const Eigen::MatrixXd & fov, const  Eigen::MatrixXd & pose, const  Eigen::MatrixXd & resolution,const ReprojectionMode reproj_type):
+        ReprojectionWrapper(
+          std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist,
+          const Eigen::MatrixXd & fov,
+          const Eigen::MatrixXd & pose,
+          const Eigen::MatrixXd & resolution,
+          const ReprojectionMode reproj_type):
         obslist_(obslist),
         fov_(fov),
         pose_(pose),
@@ -90,18 +95,45 @@ namespace aslam
       public boost::enable_shared_from_this<TartanCalibWorker<C>>
     {
         public:  
-            TartanCalibWorker(const C* camera,aslam::cameras::GridDetector gd,const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const std::vector<std::string>& reproj_types, const std::vector<std::string>& debug_modes)
+            TartanCalibWorker(
+              const C* camera,
+              aslam::cameras::GridDetector gd,
+              const std::vector<aslam::cameras::GridCalibrationTargetObservation>& obslist,
+              const Eigen::MatrixXd & fovs,
+              const Eigen::MatrixXd & poses,
+              const Eigen::MatrixXd & resolutions,
+              const std::vector<std::string>& reproj_types,
+              const std::vector<std::string>& debug_modes,
+              const int min_init_corners_autocomplete,  
+              const int min_tag_size_autocomplete,
+              const float correction_threshold,
+              const int min_resize_window_size,
+              const int max_resize_window_size,
+              const float refine_magnitude_reject,
+              const bool symmetry_refinement,
+              const float symmetry_edge_threshold,
+              const std::string export_dataset_fp
+            )
             : obslist_(obslist),
-            gd_(gd),
-            target_(gd.target()),
-            target_april_(boost::dynamic_pointer_cast<GridCalibrationTargetAprilgrid>(target_)),
-            tagDetector_(boost::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes36h11, target_april_->options().blackTagBorder)),
-            camera_(camera),
-            fovs_(fovs),
-            poses_(poses),
-            resolutions_(resolutions),
-            in_width_(obslist[0].imCols()),
-            in_height_(obslist[0].imRows()) // assumption: this array only contains images of the same resolution, as we expect to create one TartanCalibWorker class per camera
+              gd_(gd),
+              target_(gd.target()),
+              target_april_(boost::dynamic_pointer_cast<GridCalibrationTargetAprilgrid>(target_)),
+              tagDetector_(boost::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes36h11, target_april_->options().blackTagBorder)),
+              camera_(camera),
+              fovs_(fovs),
+              poses_(poses),
+              resolutions_(resolutions),
+              in_width_(obslist[0].imCols()),
+              in_height_(obslist[0].imRows()), // assumption: this array only contains images of the same resolution, as we expect to create one TartanCalibWorker class per camera
+              minInitCornersAutoComplete(min_init_corners_autocomplete),
+              minTagSizeAutoComplete(min_tag_size_autocomplete),
+              correction_threshold(correction_threshold),
+              minResizewindowSize(min_resize_window_size),
+              maxResizewindowSize(max_resize_window_size),
+              refine_magnitude_reject(refine_magnitude_reject),
+              symmetry_refinement(symmetry_refinement),
+              symmetry_edge_threshold(symmetry_edge_threshold),
+              export_dataset_fp(export_dataset_fp)
              { 
               camera_->getParameters(cam_params,true,true,true);
               num_frames_ = obslist.size();
@@ -111,9 +143,14 @@ namespace aslam
               {
                 obs.getCornersIdx(outCornerIdx_);
               }
-              
+                        
+              // Export dataset to a binary usable in generic camera model referred to in "Why having 10000 parameters..." paper.
+              // This export corresponds to BEFORE TartanCalib enhancements.
+              // if (!export_dataset_fp.empty())
+              // {
+              //   export_dataset(export_dataset_fp);
+              // }
 
-              export_dataset("before_tartan.bin");
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() && resolutions_.cols() == reproj_types.size(), "All inserted tartan matrices need the same number of columns." );
               
               // loading reprojectionwrapper classes
@@ -126,7 +163,6 @@ namespace aslam
               {
                 debug_modes_.push_back(StringToDebug(debug_mode));
               }
-
 
               for (auto obs: obslist_)
               {
@@ -273,12 +309,10 @@ namespace aslam
             float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
             float minResizewindowSize = 2;
             float maxResizewindowSize = 8;
-
-            bool harris_check = true;
-            bool start_from_subpix = false;
             double refine_magnitude_reject = 10.0;
             bool symmetry_refinement = false;
             double symmetry_edge_threshold = 10.0;
+            std::string export_dataset_fp = "";
     };
     }
 }

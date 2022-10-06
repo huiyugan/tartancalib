@@ -692,13 +692,15 @@ namespace aslam
                 num_corners_end += outCornerIdx_.size();
             }
             SM_INFO_STREAM("Ended tartan calib with "<<num_corners_end<<" corners.");
-            
-            std::ofstream myfile;
-            myfile.open (log_file,std::ios_base::app);
-            myfile << std::to_string(num_corners_end)<<"\n";
-            myfile.close();
 
-            export_dataset("generic_input.bin");
+            // Logging corners to text file for debug purposes.            
+            // std::ofstream myfile;
+            // myfile.open (log_file,std::ios_base::app);
+            // myfile << std::to_string(num_corners_end)<<"\n";
+            // myfile.close();
+
+            if (!export_dataset_fp.empty())
+                export_dataset(export_dataset_fp);
 
             return new_obslist_;
         }

@@ -80,8 +80,17 @@ boost::python::tuple estimateTransformation(const C * camera, aslam::cameras::Gr
   return boost::python::make_tuple(success, trafo);
 }
 
+// TODO: Condense all function arguments into a struct for neatness.
 template<typename C>
-boost::python::list getProjections(const C * camera, aslam::cameras::GridDetector gd,const boost::python::object& py_obslist, const  Eigen::MatrixXd & fovs, const  Eigen::MatrixXd & poses, const  Eigen::MatrixXd & resolutions,const  boost::python::list & reproj_pylist, const  boost::python::list & debug_modes)
+boost::python::list getProjections(const C * camera,
+  aslam::cameras::GridDetector gd,
+  const boost::python::object& py_obslist,
+  const Eigen::MatrixXd & fovs,
+  const Eigen::MatrixXd & poses,
+  const Eigen::MatrixXd & resolutions,
+  const boost::python::list & reproj_pylist,
+  const boost::python::list & debug_modes,
+  const boost::python::list & TartanParameters)
 {
   //convert obs python list to stl vector
   boost::python::stl_input_iterator<aslam::cameras::GridCalibrationTargetObservation> begin(py_obslist), end;
@@ -99,8 +108,36 @@ boost::python::list getProjections(const C * camera, aslam::cameras::GridDetecto
   {
     debug_modes_.push_back(boost::python::extract<std::string>(debug_modes[i]));
   }
+  
+  const int min_init_corners_autocomplete = boost::python::extract<int>(TartanParameters[0]);
+  const int min_tag_size_autocomplete = boost::python::extract<int>(TartanParameters[1]);
+  const float correction_threshold = boost::python::extract<float>(TartanParameters[2]);
+  const int min_resize_window_size = boost::python::extract<int>(TartanParameters[3]);
+  const int max_resize_window_size = boost::python::extract<int>(TartanParameters[4]);
+  const float refine_magnitude_reject = boost::python::extract<float>(TartanParameters[5]);
+  const bool symmetry_refinement = boost::python::extract<bool>(TartanParameters[6]);
+  const float symmetry_edge_threshold = boost::python::extract<float>(TartanParameters[7]);
+  const std::string export_dataset_fp = boost::python::extract<std::string>(TartanParameters[8]);
 
-  auto tartan_ = aslam::cameras::TartanCalibWorker<C>(camera,gd,obslist,fovs,poses,resolutions,reproj_types,debug_modes_);
+  auto tartan_ = aslam::cameras::TartanCalibWorker<C>(
+    camera,
+    gd,
+    obslist,
+    fovs,
+    poses,
+    resolutions,
+    reproj_types,
+    debug_modes_,
+    min_init_corners_autocomplete,
+    min_tag_size_autocomplete,
+    correction_threshold,
+    min_resize_window_size,
+    max_resize_window_size,
+    refine_magnitude_reject,
+    symmetry_refinement,
+    symmetry_edge_threshold,
+    export_dataset_fp
+  );
 
   tartan_.compute_xyzs();
   tartan_.compute_remaps();
@@ -112,7 +149,7 @@ boost::python::list getProjections(const C * camera, aslam::cameras::GridDetecto
   
   boost::python::list ret = tartan_.toPythonList(obslist_new);
 
-  return  ret;
+  return ret;
 }
 
 template<typename C>
@@ -177,7 +214,6 @@ Eigen::MatrixXd getParameters(T * D, bool p, bool d, bool s) {
   D->getParameters(P, p, d, s);
   return P;
 }
-
 
 void exportCameraGeometryBase() {
   sm::python::Id_python_converter<aslam::cameras::CameraId>::register_converter();
