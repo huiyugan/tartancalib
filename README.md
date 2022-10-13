@@ -8,7 +8,7 @@ TartanCalib contributes state-of-the-art calibration for wide-angle lenses, by i
 For more information, visit our project page [here](https://tartancalib.com).
 
 ## Installation
-### Docker
+### Docker (Preferred)
 To use the Dockerfiles provided in this repository, ensure that you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
 
 1. Clone and build docker image
@@ -33,7 +33,7 @@ TartanCalib and Kalibr are integrated within ROS. Ensure that you have ROS insta
 - Ubuntu 18.04 ROS 1 [Melodic](http://wiki.ros.org/melodic/Installation/Ubuntu)
 - Ubuntu 20.04 ROS 1 [Noetic](http://wiki.ros.org/noetic/Installation/Ubuntu)
 
-1. Get dependencies
+1. Install dependencies required for TartanCalib.
 
 Ubuntu 16
 
@@ -90,14 +90,14 @@ Ubuntu 20
         
         cd ~/tartan_ws && source devel/setup.bash
 
-4. Follow [Usage](#usage) section of this ReadMe to run calibration commands.
+4. Follow [Usage](#usage) section to get calibrating!
 
 ## Usage
-1. Create rosbag dataset
+### Step 1 - Create rosbag dataset
 
 This can be done through a multitude of different ways. If you have a physical setup linked to ROS, directly recording the sensor stream to a [rosbag](http://wiki.ros.org/rosbag) would be  easiest. There are also methods of cutting common video formats into rosbags. The rosbag [api](http://wiki.ros.org/rosbag/Code%20API) is well documented and contains examples that would potentially be helpful if you are new to working with bag files. 
 
-2. Define calibration board through YAML files
+### Step 2 - Define calibration board through YAML files
 
 Kalibr supports three different calibration targets with different parameters associated to each target. Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/calibration-targets) has more information on calibration targets in YAML. An example of an aprilgrid YAML file is provided below:
 
@@ -111,7 +111,7 @@ Kalibr supports three different calibration targets with different parameters as
 
 The method should also work with checkerboards but would require some adaptation. In general grids of AprilTags are most robust.
 
-3. Run calibration
+### Step 3 - Run calibration
 
 This is sample code for running calibration with certain parameters changed. Please refer to the table below for the full range of configurable parameters.
 
@@ -132,38 +132,48 @@ In a terminal, for example:
         --correction-threshold 10.1 \
         --models omni-radtan omni-radtan \
         --dont-show-report
-        --save_dir /path/to/output/ \
+        --save_dir /path/to/output/
 
-Below is a table of configurable parameters that you may use to customize TartanCalib to your needs:
+<br>
 
-| Parameter                     | Description                                                                           |
+Below is a table of basic parameters to get TartanCalib running. You will minimally have to configure the following parameters.
+
+| Basic Parameter                     | Description                                                                           |
 | ----------------------------- | -----------                                                                           |
 | bag                           | Path to calibration bagfile.                                                          |
-| target                        | Path to target yaml files.                                                            |
-| topics                        | Topics within bag file to calibrate. For multi-cam calibration, specify topics you'd like to calibrate. For example, if you have three cameras with topic names `/camera_n/image_raw`, use `--topics camera_0/image_raw camera_1/image_raw camera_2/image_raw`    |
-| models                        | Choose from four possible projections: pinhole, homography, cornerpredictor and none. Cornerpredictor is the 
-| fovs                          | If using pinhole projection mode, this parameter represents FOV of pinhole. This argument accepts multiple pinholes corresponding to each topic. For example, if your bag contains two topics, `/camera_0/image_raw`, and `/camera_1/image_raw`, to generate three pinholes of fovs 30, 60, 90 for `camera_0` and one pinhole of fov 90 for `camera_1`, use `--fovs 30 60 90 --fovs 90`. Note that the number of arguments for fovs must correspond with poses and resolutions.           |
-| poses                         | If using pinhole projection mode, this parameter represents pose of pinhole. As with fovs, this argument can be configured for multiple projections.          |
-| resolutions                   | If using pinhole projection mode, this parameter represents resolution of pinhole. As with fovs, this argument can be configured for multiple projections.   |
-| projections                   | Choose from four possible projections: `pinhole`, `homography`, `cornerpredictor` and `none`. `Cornerpredictor` is the autocomplete method described within the paper. |
-| debug-modes                   | Choose from 7 possible debug modes for additional debug images: `pointcloudprojection`, `pinholeprojection`, `originalprojection`, `targetpointcloud`, `individualprojections`, `reprojectionpoints` and `none`. |
-| min-init-corners-autocomplete | The algorithm requires this many corners minimally for autocomplete. Smaller values might allow the algoirthm to run better, but the pose of the board might be too uncertain for accurate results.            |
-| min-tag-size-autocomplete     | Minimum number of pixels a tag needs to be before being autocompleted. This ensures really small tags are excluded instead of being detected poorly and affecting calibration.                               |
-| correction-threshold          | Number of pixel offset between reprojection and detection allowed.                    |
-| min-resize-window-size        | Minimum window size allowed during dynamic sizing.                                    |
-| max-resize-window-size        | Maximum window size allowed during dynamic sizing.                                    |
-| symmetry-refinement           | Boolean option for if experimental feature symmetry refinement is allowed.            |
-| symmetry-edge-threshold       | Checks if detections are too close to border of pixels.                               |
-| log_dest                      | Save directory of logs.                                                               |
-| outputMatlab                  | Outputs file in Matlab format for use in BabelCalib or similar calibration toolboxes. |
-| save_dir                      | Save directory for logging data.                                                      |
+| target                        | Path to target YAML files.                                                            |
+| topics                        | List of camera topics within bag file to calibrate. If you have three cameras with topic names `/camera_n/image_raw`, use `--topics camera_0/image_raw camera_1/image_raw camera_2/image_raw`. Note that ordering here has to match ordering within --models |
+| models                        | Choose the camera/distortion model pair to be fitted. The following choices are currently available: `pinhole-radtan`, `pinhole-equi`, `pinhole-fov`, `omni-none`, `omni-radtan`, `eucm-none`, `ds-none`. For more details on supported models, check out Kalibr's [documentation](https://github.com/ethz-asl/kalibr/wiki/supported-models). |  
+| log_dest                      | Save filename of logs. All output filenames will begin with this parameter. (Default: log)|
+| save_dir                      | Save directory of YAML files containing calibration information, and a pickle with log data. Must end with a trailing slash. (Default: /data/) |
+| debug_image_dir               | Save directory of PNG files for debugging. Must be an existing folder, and debug_image_dir must end with a trailing slash if a folder is specified. Images are saved by default to your workspace folder. (Default: '') |
 
-Output will be found in the directory you've specified in save_dir.
+<br>
+  
+Below is a table of advanced parameters if you'd like to have greater control over TartanCalib's algorithm.
 
-4. Output
-TartanCalib runs in two iterations. The output file using enhancements from TartanCalib may be found in `log1-camchain.yaml`. The .yaml file will contain distortion coefficients for the distortion model used, as well as intrinsics for the camera being calibrated. For multi-camera calibration, the .yaml file will also include extrinsics between different cameras.
+| Advanced Parameter | Description |
+| ------------------ | ----------- |
+| outputMatlab                  | When selected, outputs Matlab matrix for use in BabelCalib (or similar). |
+| projections                   | Choose from four possible modes: `cornerpredictor`, `pinhole`, `homography`, and `none`. `Cornerpredictor` is the autocomplete method described within the paper, and is recommended for best results. |
+| debug-modes                   | Choose from 7 possible debug modes for additional debug images: `pointcloudprojection`, `pinholeprojection`, `originalprojection`, `targetpointcloud`, `individualprojections`, `reprojectionpoints` 
+| fovs                          | When using pinhole projection mode, this parameter represents FOV of pinhole. This argument accepts multiple pinholes corresponding to each topic. For example, if your bag contains two topics, `/camera_0/image_raw`, and `/camera_1/image_raw`, to generate three pinholes of FOVs 30, 60, 90 for `camera_0` and one pinhole of fov 90 for `camera_1`, use `--fovs 30 60 90 --fovs 90`. Note that the number of arguments for fovs must correspond with poses and resolutions.           |
+| poses                         | When using pinhole projection mode, this parameter represents pose of pinhole. As with fovs, this argument can be configured for multiple projections.          |
+| resolutions                   | When using pinhole projection mode, this parameter represents resolution of pinhole. As with fovs, this argument can be configured for multiple projections. |
+| min-init-corners-autocomplete | The algorithm minimally requires this number of corners for autocomplete. With values that are too small, the pose of the board might be too uncertain for accurate results. (Default: 24)|
+| min-tag-size-autocomplete     | Minimum size (px) a tag has to be before being autocompleted. This ensures small tags below a certain size are excluded instead of being detected poorly and affecting calibration. (Default: 0.0)|
+| correction-threshold          | Offset (px) between reprojection and detection allowed. (Default: 10.0) |
+| min-resize-window-size        | Minimum window size (px) allowed during dynamic sizing. (Default: 2) |
+| max-resize-window-size        | Maximum window size (px) allowed during dynamic sizing. (Default: 8) |
+| symmetry-refinement           | If included, symmetry refinement, an experimental feature, will be enabled. |
+| symmetry-edge-threshold       | When symmetry refinement is active, checks if detections are too close to border of pixels. (Default: 10.0) |
 
-For more information on the output, refer to Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/yaml-formats).
+### Step 4 - Output
+The output YAML files will be found in the directory you've specified in `save_dir`.
+
+TartanCalib runs in two iterations. The output file using enhancements from TartanCalib may be found in `log1-camchain.yaml`. The YAML file will contain distortion coefficients for the distortion model used, as well as intrinsics for the camera being calibrated. For multi-camera calibration, the YAML file will also include extrinsics between different cameras.
+
+For more information on the output format, refer to Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/yaml-formats).
 
 ## Authors
 * Bardienus P. Duisterhof ([email](bduister@andrew.cmu.edu))

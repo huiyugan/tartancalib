@@ -117,7 +117,8 @@ boost::python::list getProjections(const C * camera,
   const float refine_magnitude_reject = boost::python::extract<float>(TartanParameters[5]);
   const bool symmetry_refinement = boost::python::extract<bool>(TartanParameters[6]);
   const float symmetry_edge_threshold = boost::python::extract<float>(TartanParameters[7]);
-  const std::string export_dataset_fp = boost::python::extract<std::string>(TartanParameters[8]);
+  const std::string export_dataset_dir = boost::python::extract<std::string>(TartanParameters[8]);
+  const std::string debug_image_dir = boost::python::extract<std::string>(TartanParameters[9]);
 
   auto tartan_ = aslam::cameras::TartanCalibWorker<C>(
     camera,
@@ -136,7 +137,8 @@ boost::python::list getProjections(const C * camera,
     refine_magnitude_reject,
     symmetry_refinement,
     symmetry_edge_threshold,
-    export_dataset_fp
+    export_dataset_dir,
+    debug_image_dir
   );
 
   tartan_.compute_xyzs();

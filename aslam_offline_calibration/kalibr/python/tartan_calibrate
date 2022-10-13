@@ -147,9 +147,9 @@ def parseArgs():
     groupTartan.add_argument('--min-resize-window-size', type=int, default=2, dest='min_resize_window_size', help='Minimum window size allowed during dynamic sizing')
     groupTartan.add_argument('--max-resize-window-size', type=int, default=8, dest='max_resize_window_size', help='Maximum window size allowed during dynamic sizing')
     groupTartan.add_argument('--refine-magnitude-reject', type=float, default=10.0, dest='refine_magnitude_reject', help='')
-    groupTartan.add_argument('--symmetry-refinement', type=bool, default=False, dest='symmetry_refinement', help='Include symmetry refinement method')
+    groupTartan.add_argument('--symmetry-refinement', action='store_true', dest='symmetry_refinement', help='Include symmetry refinement method')
     groupTartan.add_argument('--symmetry-edge-threshold', type=float, default=10.0, dest='symmetry_edge_threshold', help='')
-    groupTartan.add_argument('--export-dataset-filepath', type=str, default="", dest="export_dataset_fp", help='Filepath to export binary usable in generic camera model referenced in "Why Having 10000..." paper.')
+    groupTartan.add_argument('--export-dataset-dir', type=str, default="", dest="export_dataset_dir", help='Filepath to export binary usable in generic camera model referenced in "Why Having 10000..." paper.')
 
     outlierSettings = parser.add_argument_group('Outlier filtering options')
     outlierSettings.add_argument('--no-outliers-removal', action='store_false', default=True, dest='removeOutliers', help='Disable corner outlier filtering')
@@ -165,10 +165,11 @@ def parseArgs():
     outputSettings.add_argument('--dont-show-report', action='store_true', dest='dontShowReport', help='Do not show the report on screen after calibration.')
     outputSettings.add_argument('--polar_setting', type=int, default=0, dest='polarSetting', help='The way we are using polar angles of detections to improve results. 0=None, don not use. 1=set an angle threshold, under this threshold no corners will be used. 2 = bins, divide the corners into polar angle bins and give each bin a weight.')
     outputSettings.add_argument('--force_all', action='store_true', dest='forceAll', help='Force all points to be used.')
-    outputSettings.add_argument('--log_dest', type=str, dest='logDest',default='log', help='Logging for later analysis.')
-    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=50, help='Logging for later analysis.')
-    outputSettings.add_argument('--outputMatlab',action='store_true',dest='outputMatlab',help='Outputs a matlab matrix for use in babelcalib.')
+    outputSettings.add_argument('--polar_cutoff', type=float, dest='polarCutoff',default=50, help='Binary cutoff for polar.')
+    outputSettings.add_argument('--outputMatlab',action='store_true',dest='outputMatlab',help='Outputs a matlab matrix for use in Babelcalib.')
     outputSettings.add_argument('--save_dir', type=str, dest='saveDir',default='/data/', help='All the data will be logged to this directory.')
+    outputSettings.add_argument('--log_dest', type=str, dest='logDest',default='log', help='Logging for later analysis.')
+    outputSettings.add_argument('--debug_image_dir', type=str, dest='debugImageDir', default='', help='Directory for saving debug images for analysis. Must end with a trailing slash.')
 
     # Print help if no argument is specified
     if len(sys.argv)==1:
@@ -528,7 +529,8 @@ def main():
                             parsed.refine_magnitude_reject,
                             parsed.symmetry_refinement,
                             parsed.symmetry_edge_threshold,
-                            parsed.export_dataset_fp
+                            parsed.export_dataset_dir,
+                            parsed.debugImageDir
                         ]
                         
                         new_obs = cam.geometry.getProjections(

@@ -112,7 +112,8 @@ namespace aslam
               const float refine_magnitude_reject,
               const bool symmetry_refinement,
               const float symmetry_edge_threshold,
-              const std::string export_dataset_fp
+              const std::string export_dataset_dir,
+              const std::string debug_image_dir
             )
             : obslist_(obslist),
               gd_(gd),
@@ -133,7 +134,8 @@ namespace aslam
               refine_magnitude_reject(refine_magnitude_reject),
               symmetry_refinement(symmetry_refinement),
               symmetry_edge_threshold(symmetry_edge_threshold),
-              export_dataset_fp(export_dataset_fp)
+              export_dataset_dir(export_dataset_dir),
+              debug_image_dir(debug_image_dir)
              { 
               camera_->getParameters(cam_params,true,true,true);
               num_frames_ = obslist.size();
@@ -312,7 +314,8 @@ namespace aslam
             double refine_magnitude_reject = 10.0;
             bool symmetry_refinement = false;
             double symmetry_edge_threshold = 10.0;
-            std::string export_dataset_fp = "";
+            std::string export_dataset_dir = "";
+            std::string debug_image_dir="";
     };
     }
 }

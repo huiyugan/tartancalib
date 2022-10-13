@@ -576,7 +576,7 @@ namespace aslam
                     
                     aslam::Time stamp = obslist_[j].time();
                     SM_INFO_STREAM("Writing an autofill");
-                    cv::imwrite(std::to_string(stamp.toSec())+".png",img_color);
+                    cv::imwrite(debug_image_dir + std::to_string(stamp.toSec())+".png",img_color);
                     // write_observation(new_obslist_[j],std::to_string(stamp.toSec())+"_tartan.txt");
 
                 }
@@ -677,7 +677,7 @@ namespace aslam
                     cv::Mat cornered_img = get_mat(obslist,true,0.,colors,5.0);
                     aslam::Time stamp = obs.time();
 
-                    cv::imwrite("homography_"+std::to_string(stamp.toSec())+".png",cornered_img);
+                    cv::imwrite(debug_image_dir + "homography_"+std::to_string(stamp.toSec())+".png",cornered_img);
                 }
             }
         }
@@ -699,8 +699,8 @@ namespace aslam
             // myfile << std::to_string(num_corners_end)<<"\n";
             // myfile.close();
 
-            if (!export_dataset_fp.empty())
-                export_dataset(export_dataset_fp);
+            if (!export_dataset_dir.empty())
+                export_dataset(export_dataset_dir);
 
             return new_obslist_;
         }
@@ -732,7 +732,7 @@ namespace aslam
         
                             
                             cv::Mat color_img = get_mat(obs,false,0.,colors,5.0);
-                            cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_original.png",color_img);
+                            cv::imwrite(debug_image_dir + "frame_"+std::to_string(stamp.toSec())+"_original.png",color_img);
                         }
                         
                         break;
@@ -779,7 +779,7 @@ namespace aslam
                             temp_img.copyTo(img_total(cv::Rect(img_size,img_size,img_size,img_size)));
                             
                             aslam::Time stamp = obslist_[i].time();
-                            cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_pinhole.png",img_total);
+                            cv::imwrite(debug_image_dir + "frame_"+std::to_string(stamp.toSec())+"_pinhole.png",img_total);
                         }
 
                         break;
@@ -848,7 +848,7 @@ namespace aslam
                             temp_img = get_mat(obslist,false,0.,colors,2.0);
 
                             aslam::Time stamp = obslist_[i].time();
-                            cv::imwrite("frame_"+std::to_string(stamp.toSec())+"_projection_"+std::to_string(j)+".png",temp_img);
+                            cv::imwrite(debug_image_dir + "frame_"+std::to_string(stamp.toSec())+"_projection_"+std::to_string(j)+".png",temp_img);
                             }
             
                         }
@@ -879,7 +879,7 @@ namespace aslam
                         const std::tm calendar_time = *std::localtime( std::addressof(now) ) ;
 
                         cv::Mat color_img = get_mat(obs,false,0.,colors,5.0);
-                        cv::imwrite("all_points_"+std::to_string(calendar_time.tm_hour)+"_"+std::to_string(calendar_time.tm_min)+"_"+std::to_string(calendar_time.tm_sec)+".png",color_img);
+                        cv::imwrite(debug_image_dir + "all_points_"+std::to_string(calendar_time.tm_hour)+"_"+std::to_string(calendar_time.tm_min)+"_"+std::to_string(calendar_time.tm_sec)+".png",color_img);
 
                         break;
                     }
