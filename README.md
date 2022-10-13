@@ -10,13 +10,72 @@ TartanCalib supports calibration of multiple wide-angle cameras. While calibrati
 For more information, visit our project page [here](https://creativecommons.org/licenses/by-nc/4.0/).
 
 ## Installation
+### Docker
+Kalibr's original Dockerfiles are included within this repository. To use the Dockerfiles, ensure that you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
+
+1. Clone and build docker image
+        
+        git clone https://github.com/castacks/tartancalib
+        cd tartancalib
+        docker build -t tartancalib -f Dockerfile_ros1_20_04 .
+
+2. Mount data folder and share xhost within container for GUI. For more information, read the [ROS wiki](http://wiki.ros.org/docker/Tutorials/GUI) on Docker.
+        
+        FOLDER=/path/to/your/data/on/host
+        xhost +local:root
+        docker run -it -e "DISPLAY" -e "QT_X11_NO_MITSHM=1" \
+            -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+            -v "$FOLDER:/data" tartancalib
+
+3. When in the Docker container, follow the [Usage](#usage) section of this readme to run calibration commands.
+
 ### Local Installation
 TartanCalib and Kalibr are integrated within ROS. Ensure that you have ROS installed within your system.
 - Ubuntu 16.04 ROS 1 [Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu)
 - Ubuntu 18.04 ROS 1 [Melodic](http://wiki.ros.org/melodic/Installation/Ubuntu)
 - Ubuntu 20.04 ROS 1 [Noetic](http://wiki.ros.org/noetic/Installation/Ubuntu)
 
-1. Clone and build repository
+1. Get dependencies
+
+Ubuntu 16
+
+        sudo apt-get update && apt-get install -y \
+        git wget autoconf automake \
+        python2.7-dev python-pip python-scipy python-matplotlib \
+        ipython python-wxgtk3.0 python-tk python-igraph \
+        libeigen3-dev libboost-all-dev libsuitesparse-dev \
+        doxygen \
+        libopencv-dev \
+        libpoco-dev libtbb-dev libblas-dev liblapack-dev libv4l-dev \
+        python-catkin-tools     
+
+Ubuntu 18
+
+        sudo apt-get update && apt-get install -y \
+        git wget autoconf automake nano \
+        python3-dev python-pip python-scipy python-matplotlib \
+        ipython python-wxgtk4.0 python-tk python-igraph \
+        libeigen3-dev libboost-all-dev libsuitesparse-dev \
+        doxygen \
+        libopencv-dev \
+        libpoco-dev libtbb-dev libblas-dev liblapack-dev libv4l-dev \
+        python-catkin-tools
+
+
+Ubuntu 20
+
+        sudo apt-get update && apt-get install -y \
+        git wget autoconf automake nano \
+        python3-dev python3-pip python3-scipy python3-matplotlib \
+        ipython3 python3-wxgtk4.0 python3-tk python3-igraph \
+        libeigen3-dev libboost-all-dev libsuitesparse-dev \
+        doxygen \
+        libopencv-dev \
+        libpoco-dev libtbb-dev libblas-dev liblapack-dev libv4l-dev \
+        python3-catkin-tools python3-osrf-pycommon
+
+2. Clone and build repository
+
         mkdir ~/tartan_ws && cd ~/tartan_ws
         mkdir src && cd src
         git clone https://github.com/castacks/tartancalib
@@ -29,27 +88,11 @@ TartanCalib and Kalibr are integrated within ROS. Ensure that you have ROS insta
         catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
         catkin build
 
-2. Source catkin workspace
+3. Source catkin workspace
+        
         cd ~/tartan_ws && source devel/setup.bash
 
-3. Follow [Usage](#usage) section of this ReadMe to run calibration commands.
-
-### Docker
-Kalibr's original Dockerfiles are included within this repository. To use the Dockerfiles, ensure that you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
-
-1. Clone and build docker image
-        git clone https://github.com/castacks/tartancalib
-        cd tartancalib
-        docker build -t tartancalib -f Dockerfile_ros1_20_04 .
-
-2. Mount data folder and share xhost within container for GUI. For more information, read the [ROS wiki](http://wiki.ros.org/docker/Tutorials/GUI) on Docker.
-        FOLDER=/path/to/your/data/on/host
-        xhost +local:root
-        docker run -it -e "DISPLAY" -e "QT_X11_NO_MITSHM=1" \
-            -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-            -v "$FOLDER:/data" tartancalib
-
-3. When in the Docker container, follow the [Usage](#usage) section of this readme to run calibration commands.
+4. Follow [Usage](#usage) section of this ReadMe to run calibration commands.
 
 ## Usage
 1. Create rosbag dataset
@@ -58,9 +101,7 @@ This can be done through a multitude of different ways. If you have a physical s
 
 2. Define calibration board through YAML files
 
-Kalibr supports three different calibration targets with different parameters associated to each target. Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/calibration-targets) has more information on calibration targets in YAML. 
-
-Example YAML for a 10x7 aprilgrid:
+Kalibr supports three different calibration targets with different parameters associated to each target. Kalibr's [wiki](https://github.com/ethz-asl/kalibr/wiki/calibration-targets) has more information on calibration targets in YAML. An example of an aprilgrid YAML file is provided below:
 
         #example for aprilgrid
         target_type: 'aprilgrid' #gridtype
@@ -72,8 +113,17 @@ Example YAML for a 10x7 aprilgrid:
 
 3. Run calibration
 
-An example code snippet for running TartanCalib:
+This is sample code for running calibration with certain parameters changed. Please refer to the table below for the full range of configurable parameters.
 
+In one terminal:
+        
+        export ROS1_DISTRO=noetic # kinetic=16.04, melodic=18.04, noetic=20.04
+        source /opt/ros/$ROS1_DISTRO/setup.bash
+        roscore
+
+In another:
+        
+        cd ~/tartan_ws && source devel/setup.bash
         rosrun kalibr tartan_calibrate \
         --bag /path/to/bagfile.bag \
         --target /path/to/target.yaml \
@@ -124,16 +174,14 @@ For more information on the output, refer to Kalibr's [wiki](https://github.com/
 * Sebastian Scherer
 
 ## References
-The calibration approaches used in TartanCalib are documented in the following paper. Please cite this paper, and the appropriate papers on Kalibr's repository when using this toolbox or parts of it in an academic publication.
+The calibration approaches used in TartanCalib are documented in the following paper. Please cite this paper, and the appropriate papers on [Kalibr's](https://github.com/ethz-asl/kalibr/) repository when using this toolbox or parts of it in an academic publication.
 
-1. Bardienus P Duisterhof, Yaoyu Hu, Si Heng Teng, Michael Kaess, Sebastian Scherer (2022). TartanCalib: Iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags. Submitted to  Proceedings of the IEEE International Conference on Robotics and Automation (ICRA).
-
-@article{duisterhof2022tartancalib,
-  title={TartanCalib: Iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags},
-  author={Duisterhof, Bardienus P and Hu, Yaoyu and Teng, Si Heng and Kaess, Michael and Scherer, Sebastian},
-  journal={arXiv preprint arXiv:2210.02511},
-  year={2022}
-}
+        @article{duisterhof2022tartancalib,
+          title={TartanCalib: Iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags},
+          author={Duisterhof, Bardienus P and Hu, Yaoyu and Teng, Si Heng and Kaess, Michael and Scherer, Sebastian},
+          journal={arXiv preprint arXiv:2210.02511},
+          year={2022}
+        }
 
 ## Acknowledgments
 This work is built upon the [Kalibr](https://github.com/ethz-asl/kalibr) toolbox.
