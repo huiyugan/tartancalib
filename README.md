@@ -3,15 +3,13 @@
 [![ROS1 Ubuntu 20.04](https://github.com/ethz-asl/kalibr/actions/workflows/docker_2004_build.yaml/badge.svg)](https://github.com/ethz-asl/kalibr/actions/workflows/docker_2004_build.yaml)
 
 ## Introduction
-TartanCalib is iterative Wide-Angle Lens Calibration using Adaptive SubPixel Refinement of AprilTags. The code for TartanCalib is built upon the [Kalibr](https://github.com/ethz-asl/kalibr) toolbox, and allows easy calibration of wide-angle cameras.
+TartanCalib contributes state-of-the-art calibration for wide-angle lenses, by implementing an iterative calibration pipeline and adaptive subPixel refinement of AprilTags. The code for TartanCalib is built upon the [Kalibr](https://github.com/ethz-asl/kalibr) toolbox, is easy to use, and robust. If you are interested in helping us extend the features of TartanCalib, please reach out to Bart ([email](bduister@andrew.cmu.edu)). 
 
-TartanCalib supports calibration of multiple wide-angle cameras. While calibrating multiple cameras, ensure that the cameras all maintain some view of the calibration board.
-
-For more information, visit our project page [here](https://creativecommons.org/licenses/by-nc/4.0/).
+For more information, visit our project page [here](https://tartancalib.com).
 
 ## Installation
 ### Docker
-Kalibr's original Dockerfiles are included within this repository. To use the Dockerfiles, ensure that you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
+To use the Dockerfiles provided in this repository, ensure that you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
 
 1. Clone and build docker image
         
@@ -111,17 +109,18 @@ Kalibr supports three different calibration targets with different parameters as
         tagSpacing: 0.3             #ratio of space between tags to tagSize
                                     #example: tagSize=2m, spacing=0.5m --> tagSpacing=0.25[-]
 
+The method should also work with checkerboards but would require some adaptation. In general grids of AprilTags are most robust.
+
 3. Run calibration
 
 This is sample code for running calibration with certain parameters changed. Please refer to the table below for the full range of configurable parameters.
 
-In one terminal:
+In a terminal or bash file:
         
         export ROS1_DISTRO=noetic # kinetic=16.04, melodic=18.04, noetic=20.04
         source /opt/ros/$ROS1_DISTRO/setup.bash
-        roscore
 
-In another:
+In a terminal, for example:
         
         cd ~/tartan_ws && source devel/setup.bash
         rosrun kalibr tartan_calibrate \
