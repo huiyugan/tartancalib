@@ -112,7 +112,7 @@ namespace aslam
                 obs.getCornersIdx(outCornerIdx_);
               }
               
-
+              
               export_dataset("before_tartan.bin");
               SM_ASSERT_TRUE(std::runtime_error,num_views_ == poses_.cols() && poses_.cols() == resolutions_.cols() && resolutions_.cols() == reproj_types.size(), "All inserted tartan matrices need the same number of columns." );
               
@@ -270,15 +270,13 @@ namespace aslam
 
             int minInitCornersAutoComplete = 24; // we need at least this many corners to be able to do autocomplete, since the pose of the board is otherwise too uncertain.
             float minTagSizeAutoComplete = 0; // this is how many pixels a tag needs to be in size before we consider autocompleting it. This is just to make sure really small tags aren't detected and then detected poorly
-            float correction_threshold = 10.0; // number of pixel offset between reprojection and detection we allow
+            float correction_threshold = 2.0; // number of pixel offset between reprojection and detection we allow
             float minResizewindowSize = 2;
             float maxResizewindowSize = 8;
-
-            bool harris_check = true;
-            bool start_from_subpix = false;
             double refine_magnitude_reject = 10.0;
             bool symmetry_refinement = false;
             double symmetry_edge_threshold = 10.0;
+            bool dummy = false;
     };
     }
 }

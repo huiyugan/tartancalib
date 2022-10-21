@@ -12,19 +12,19 @@ data_folder = '/data/final_experiments/'
 experiments_output = '/data/final_experiments/'
 experiments = []
 
-#ordv single cam
-experiments.append(Experiment('ord-6x6-sep12-500f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
-# # experiments.append(Experiment('ord-6x6-sep12-100f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
-experiments.append(Experiment('ord-10x7-sep12-500f.bag',['/camera_0/image_raw'],'/data/400_300.yaml'))
+# #ordv single cam
+# experiments.append(Experiment('t2-eval-se12.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+# experiments.append(Experiment('calib_180.bag',['/camera_0/image_raw','/camera_1/image_raw','/camera_2/image_raw','/camera_3/image_raw','/camera_4/image_raw','/camera_5/image_raw'],'/data/april_6x6.yaml'))
+# experiments.append(Experiment('ord-10x7-sep12-500f.bag',['/camera_0/image_raew'],'/data/400_300.yaml'))
 
 
-# #ordv multi cam
-experiments.append(Experiment('ord-10x7-sep12-500f.bag',['/camera_0/image_raw','/camera_1/image_raw'],'/data/400_300.yaml'))
-experiments.append(Experiment('ord-6x6-sep12-500f.bag',['/camera_0/image_raw','/camera_1/image_raw'],'/data/april_6x6.yaml'))
+# # #ordv multi cam
+# experiments.append(Experiment('ord-10x7-sep12-500f.bag',['/camera_0/image_raw','/camera_1/image_raw'],'/data/400_300.yaml'))
+experiments.append(Experiment('ord-6x6-sep12-100f.bag',['/camera_0/image_raw','/camera_1/image_raw'],'/data/april_6x6.yaml'))
 
 # # # gopro bags
-experiments.append(Experiment('gopro-6x6-sep12-500f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
-experiments.append(Experiment('gopro-10x7-sep12-500f.bag',['/camera_0/image_raw'],'/data/400_300.yaml'))
+# experiments.append(Experiment('gopro-6x6-sep12-100f.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
+# experiments.append(Experiment('gopro-10x7-sep12-500f.bag',['/camera_0/image_raw'],'/data/400_300.yaml'))
 
 # experiments.append(Experiment('short.bag',['/camera_0/image_raw'],'/data/april_6x6.yaml'))
 
@@ -32,10 +32,7 @@ experiments.append(Experiment('gopro-10x7-sep12-500f.bag',['/camera_0/image_raw'
 
 
 
-
-
-models = ['ds-none','omni-radtan']
-
+models = ['omni-radtan']
 experiment_count = 0
 for experiment in experiments:
     for model in models:

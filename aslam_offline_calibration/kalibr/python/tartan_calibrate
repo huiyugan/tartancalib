@@ -469,7 +469,7 @@ def main():
 
                     for cam_id in range(0, numCams):
                         cam = cameraList[cam_id]                      
-                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,['originalprojection'])
+                        new_obs = cam.geometry.getProjections(cam.ctarget.detector,obslistTartan[cam_id],fovs,poses,resolutions,projections,['none'])
                         for obs in new_obs:
                             obsdb.addObservation(cam_id,obs)
                         obslistTartan[cam_id] = new_obs
